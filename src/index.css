@@ -449,3 +449,9 @@ body.dashboard-fullscreen main {
   :root { --sidebar-w: 0px; }
   .main-content { margin-left: 0; }
 }
+
+/* Date Input (Slicer/Timeline) */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
