@@ -14,29 +14,71 @@ export const CHART_TYPES = [
 ];
 
 /**
+ * Column rotation tracker — ensures each chart gets a different
+ * combination of columns instead of reusing the same ones.
+ */
+class ColumnPool {
+  constructor(columns) {
+    this.columns = columns;
+    this.idx = 0;
+    this.used = new Set();
+  }
+  next() {
+    if (this.columns.length === 0) return null;
+    // Try to find an unused column first
+    for (let i = 0; i < this.columns.length; i++) {
+      const col = this.columns[(this.idx + i) % this.columns.length];
+      if (!this.used.has(col.key)) {
+        this.used.add(col.key);
+        this.idx = (this.idx + i + 1) % this.columns.length;
+        return col;
+      }
+    }
+    // All used — wrap around
+    const col = this.columns[this.idx % this.columns.length];
+    this.idx = (this.idx + 1) % this.columns.length;
+    return col;
+  }
+  peek(i) {
+    return this.columns[i % this.columns.length];
+  }
+  get length() { return this.columns.length; }
+}
+
+/**
  * AI Suggester: generate a clean, realistic dashboard.
- * Produces at most 4 KPI cards + 4-5 charts + 1 data table.
- * Each chart uses a DIFFERENT combination of columns so the dashboard
- * doesn't repeat the same data across every widget.
+ * Produces 3 KPI cards + 5-6 charts + 1 data table.
+ * Each chart uses a DIFFERENT combination of columns.
  */
 export function suggestCharts(schema, data) {
   if (!schema || schema.length === 0) return [];
 
   const numeric  = schema.filter(c => c.type === 'numeric');
-  const category = schema.filter(c => c.type === 'category');
+  const category = schema.filter(c => c.type === 'category' || c.type === 'text');
   const date     = schema.filter(c => c.type === 'date');
   const suggestions = [];
 
-  // Track which numeric/category columns have been used to avoid repetition
-  let numericIdx = 0;
-  let catIdx = 0;
-  const nextNumeric = () => numeric[numericIdx++ % numeric.length];
-  const nextCategory = () => category[catIdx++ % category.length];
+  const numPool = new ColumnPool(numeric);
+  const catPool = new ColumnPool(category);
 
-  // ── 1. KPI CARDS (max 3) ──
+  // Helper: count unique values in data for a column
+  const uniqueCount = (key) => {
+    const set = new Set();
+    data.forEach(r => { const v = String(r[key] ?? '').trim(); if (v) set.add(v); });
+    return set.size;
+  };
+
+  // ── 1. KPI CARDS (3) — use first 3 numeric columns ──
   const kpiCount = Math.min(3, numeric.length);
+  const kpiColors = [
+    { bg: 'rgba(99,102,241,0.1)', accent: 'rgba(99,102,241,0.8)' },
+    { bg: 'rgba(6,182,212,0.1)', accent: 'rgba(6,182,212,0.8)' },
+    { bg: 'rgba(16,185,129,0.1)', accent: 'rgba(16,185,129,0.8)' },
+  ];
+
   for (let i = 0; i < kpiCount; i++) {
-    const col = numeric[i];
+    const col = numPool.next();
+    if (!col) break;
     const values = data.map(r => parseFloat(r[col.key])).filter(n => !isNaN(n));
     if (values.length === 0) continue;
 
@@ -45,148 +87,164 @@ export function suggestCharts(schema, data) {
     const max   = Math.max(...values, 0);
     const min   = Math.min(...values, Infinity);
 
-    const colorThemes = [
-      { bg: 'rgba(99,102,241,0.1)', accent: 'rgba(99,102,241,0.8)' },
-      { bg: 'rgba(6,182,212,0.1)', accent: 'rgba(6,182,212,0.8)' },
-      { bg: 'rgba(16,185,129,0.1)', accent: 'rgba(16,185,129,0.8)' },
-    ];
-
     suggestions.push({
       id: uuidv4(),
       type: 'kpi',
       title: `Total ${col.key}`,
       column: col.key,
       value: total,
-      avg,
-      max,
-      min: min === Infinity ? 0 : min,
-      count: values.length,
+      avg, max, min: min === Infinity ? 0 : min, count: values.length,
       format: total > 1_000_000 ? 'M' : total > 1_000 ? 'K' : 'raw',
-      bgColor: colorThemes[i % colorThemes.length].bg,
-      accentColor: colorThemes[i % colorThemes.length].accent,
+      bgColor: kpiColors[i % kpiColors.length].bg,
+      accentColor: kpiColors[i % kpiColors.length].accent,
       showSum: true, showAvg: true, showMax: true, showMin: false, showCount: false,
       confidence: 0.95,
       reason: 'Key metric',
     });
   }
 
-  // ── 2. BAR CHART — category vs a DIFFERENT numeric than KPIs ──
-  if (category.length > 0 && numeric.length > 0) {
-    const catCol = category[0];
-    // Use a numeric column that wasn't the first KPI if possible
-    const numCol = numeric.length > kpiCount ? numeric[kpiCount] : numeric[0];
-    const aggregated = aggregateBy(data, catCol.key, numCol.key);
-
+  // ── 2. BAR CHART — category vs numeric ──
+  const barCat = catPool.next();
+  const barNum = numPool.next();
+  if (barCat && barNum) {
     suggestions.push({
       id: uuidv4(),
       type: 'bar',
-      title: `${numCol.key} by ${catCol.key}`,
-      xKey: catCol.key,
-      yKey: numCol.key,
-      data: aggregated,
+      title: `${barNum.key} by ${barCat.key}`,
+      xKey: barCat.key,
+      yKey: barNum.key,
+      data: aggregateBy(data, barCat.key, barNum.key),
       confidence: 0.92,
       reason: 'Bar chart',
     });
   }
 
-  // ── 3. LINE / AREA CHART — trend over time (date column) ──
-  if (date.length > 0 && numeric.length > 0) {
-    const dateCol = date[0];
-    // Use a different numeric than bar chart
-    const numCol = numeric.length > kpiCount + 1 ? numeric[kpiCount + 1] : numeric[numeric.length - 1];
-    const timeData = [...data]
-      .sort((a, b) => new Date(a[dateCol.key]) - new Date(b[dateCol.key]))
-      .map(r => ({ [dateCol.key]: r[dateCol.key], [numCol.key]: parseFloat(r[numCol.key]) || 0 }));
-
-    suggestions.push({
-      id: uuidv4(),
-      type: 'line',
-      title: `Trend: ${numCol.key} over time`,
-      xKey: dateCol.key,
-      yKey: numCol.key,
-      data: timeData,
-      confidence: 0.90,
-      reason: 'Line chart',
-    });
-  } else if (category.length > 1 && numeric.length > 0) {
-    // No date column — use a second category as x-axis for a line chart
-    const catCol = category[1];
-    const numCol = numeric.length > kpiCount + 1 ? numeric[kpiCount + 1] : numeric[numeric.length - 1];
-    const timeData = data.map(r => ({ [catCol.key]: r[catCol.key], [numCol.key]: parseFloat(r[numCol.key]) || 0 }));
-
-    suggestions.push({
-      id: uuidv4(),
-      type: 'line',
-      title: `Trend: ${numCol.key} by ${catCol.key}`,
-      xKey: catCol.key,
-      yKey: numCol.key,
-      data: timeData,
-      confidence: 0.88,
-      reason: 'Line chart',
-    });
+  // ── 3. LINE CHART — trend over time (date) or by category ──
+  const lineNum = numPool.next();
+  if (lineNum) {
+    if (date.length > 0) {
+      const dateCol = date[0];
+      const timeData = [...data]
+        .sort((a, b) => new Date(a[dateCol.key]) - new Date(b[dateCol.key]))
+        .map(r => ({ [dateCol.key]: r[dateCol.key], [lineNum.key]: parseFloat(r[lineNum.key]) || 0 }));
+      suggestions.push({
+        id: uuidv4(),
+        type: 'line',
+        title: `Trend: ${lineNum.key} over time`,
+        xKey: dateCol.key,
+        yKey: lineNum.key,
+        data: timeData,
+        confidence: 0.90,
+        reason: 'Line chart',
+      });
+    } else {
+      const lineCat = catPool.next();
+      if (lineCat) {
+        suggestions.push({
+          id: uuidv4(),
+          type: 'line',
+          title: `Trend: ${lineNum.key} by ${lineCat.key}`,
+          xKey: lineCat.key,
+          yKey: lineNum.key,
+          data: data.map(r => ({ [lineCat.key]: r[lineCat.key], [lineNum.key]: parseFloat(r[lineNum.key]) || 0 })),
+          confidence: 0.88,
+          reason: 'Line chart',
+        });
+      }
+    }
   }
 
-  // ── 4. PIE / DONUT — a DIFFERENT category vs a DIFFERENT numeric ──
-  if (category.length > 0 && numeric.length > 0) {
-    const catCol = category.length > 1 ? category[1] : category[0];
-    // Use yet another numeric column
-    const numCol = numeric.length > kpiCount + 2 ? numeric[kpiCount + 2] : numeric[0];
-
-    if (catCol.uniqueValues && catCol.uniqueValues.length <= 10) {
-      const aggregated = aggregateBy(data, catCol.key, numCol.key);
+  // ── 4. PIE CHART — different category vs different numeric ──
+  const pieCat = catPool.next();
+  const pieNum = numPool.next();
+  if (pieCat && pieNum) {
+    const uniq = uniqueCount(pieCat.key);
+    if (uniq >= 2 && uniq <= 12) {
       suggestions.push({
         id: uuidv4(),
         type: 'pie',
-        title: `Share: ${numCol.key} by ${catCol.key}`,
-        nameKey: catCol.key,
-        valueKey: numCol.key,
-        data: aggregated.slice(0, 8),
+        title: `Share: ${pieNum.key} by ${pieCat.key}`,
+        nameKey: pieCat.key,
+        valueKey: pieNum.key,
+        data: aggregateBy(data, pieCat.key, pieNum.key).slice(0, 8),
         confidence: 0.85,
         reason: 'Pie chart',
       });
     }
   }
 
-  // ── 5. STACKED BAR — if 2+ numeric columns and 2+ categories ──
-  if (category.length > 0 && numeric.length >= 2) {
-    const catCol = category.length > 1 ? category[1] : category[0];
-    // Use two numeric columns not yet heavily used
-    const num1 = numeric.length > 1 ? numeric[1] : numeric[0];
-    const num2 = numeric.length > 2 ? numeric[2] : numeric[0];
-    const stackedData = createStackedBarData(data, catCol.key, [num1.key, num2.key]);
+  // ── 5. AREA CHART — another numeric over time/category ──
+  const areaNum = numPool.next();
+  if (areaNum) {
+    if (date.length > 0) {
+      const dateCol = date[0];
+      const timeData = [...data]
+        .sort((a, b) => new Date(a[dateCol.key]) - new Date(b[dateCol.key]))
+        .map(r => ({ [dateCol.key]: r[dateCol.key], [areaNum.key]: parseFloat(r[areaNum.key]) || 0 }));
+      suggestions.push({
+        id: uuidv4(),
+        type: 'area',
+        title: `${areaNum.key} over time`,
+        xKey: dateCol.key,
+        yKey: areaNum.key,
+        data: timeData,
+        confidence: 0.87,
+        reason: 'Area chart',
+      });
+    } else {
+      const areaCat = catPool.next();
+      if (areaCat) {
+        suggestions.push({
+          id: uuidv4(),
+          type: 'area',
+          title: `${areaNum.key} by ${areaCat.key}`,
+          xKey: areaCat.key,
+          yKey: areaNum.key,
+          data: aggregateBy(data, areaCat.key, areaNum.key),
+          confidence: 0.85,
+          reason: 'Area chart',
+        });
+      }
+    }
+  }
 
+  // ── 6. STACKED BAR — two numerics by a category ──
+  const stackCat = catPool.next();
+  const stackNum1 = numPool.next();
+  const stackNum2 = numPool.next();
+  if (stackCat && stackNum1 && stackNum2) {
     suggestions.push({
       id: uuidv4(),
       type: 'stacked-bar',
-      title: `${num1.key} & ${num2.key} by ${catCol.key}`,
-      xKey: catCol.key,
-      yKeys: [num1.key, num2.key],
-      data: stackedData,
+      title: `${stackNum1.key} & ${stackNum2.key} by ${stackCat.key}`,
+      xKey: stackCat.key,
+      yKeys: [stackNum1.key, stackNum2.key],
+      data: createStackedBarData(data, stackCat.key, [stackNum1.key, stackNum2.key]),
       confidence: 0.80,
       reason: 'Stacked bar chart',
     });
   }
 
-  // ── 6. SCATTER — two numeric columns not yet paired ──
-  if (numeric.length >= 2) {
-    const xCol = numeric.length > 2 ? numeric[1] : numeric[0];
-    const yCol = numeric.length > 2 ? numeric[2] : numeric[1];
+  // ── 7. SCATTER — two numerics ──
+  const scatterX = numPool.next();
+  const scatterY = numPool.next();
+  if (scatterX && scatterY) {
     suggestions.push({
       id: uuidv4(),
       type: 'scatter',
-      title: `${xCol.key} vs ${yCol.key}`,
-      xKey: xCol.key,
-      yKey: yCol.key,
+      title: `${scatterX.key} vs ${scatterY.key}`,
+      xKey: scatterX.key,
+      yKey: scatterY.key,
       data: data.slice(0, 200).map(r => ({
-        [xCol.key]: parseFloat(r[xCol.key]) || 0,
-        [yCol.key]: parseFloat(r[yCol.key]) || 0,
+        [scatterX.key]: parseFloat(r[scatterX.key]) || 0,
+        [scatterY.key]: parseFloat(r[scatterY.key]) || 0,
       })),
       confidence: 0.82,
       reason: 'Scatter plot',
     });
   }
 
-  // ── 7. DATA TABLE ──
+  // ── 8. DATA TABLE ──
   suggestions.push({
     id: uuidv4(),
     type: 'table',

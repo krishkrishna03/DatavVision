@@ -57,6 +57,8 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
         padding: '10px 16px',
         marginBottom: 20,
         backdropFilter: 'blur(12px)',
+        position: 'relative',
+        zIndex: 1000,
       }}
     >
       {/* Header */}
@@ -208,7 +210,7 @@ function SlicerDropdown({ column, values, selected, onToggle, onClear }) {
           {/* Click-away overlay */}
           <div
             onClick={() => setOpen(false)}
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}
           />
           <div
             style={{
@@ -223,7 +225,7 @@ function SlicerDropdown({ column, values, selected, onToggle, onClear }) {
               borderRadius: 8,
               padding: '8px',
               boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-              zIndex: 1000,
+              zIndex: 10001,
             }}
           >
             {/* Header */}
