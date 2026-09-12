@@ -87,41 +87,19 @@ export function recomputeChart(chart, filteredRows) {
     return { ...chart, data: newData };
   }
 
-  // Pie / donut / treemap / funnel use nameKey + valueKey
+  // Pie / donut use nameKey + valueKey
   if ((chart.type === 'pie' || chart.type === 'donut') && chart.nameKey && chart.valueKey) {
     const newData = aggregateBy(filteredRows, chart.nameKey, chart.valueKey).slice(0, 8);
     return { ...chart, data: newData };
   }
 
-  if (chart.type === 'treemap' && chart.dataKey) {
-    const agg = aggregateBy(filteredRows, chart.nameKey || chart.xKey, chart.dataKey);
-    return {
-      ...chart,
-      data: agg.slice(0, 20).map((d) => ({
-        name: d[chart.nameKey || chart.xKey],
-        value: d[chart.dataKey],
-      })),
-    };
-  }
-
-  if (chart.type === 'funnel' && chart.dataKey) {
-    const agg = aggregateBy(filteredRows, chart.nameKey || chart.xKey, chart.dataKey).slice(0, 6);
-    return {
-      ...chart,
-      data: agg.map((d) => ({
-        name: d[chart.nameKey || chart.xKey],
-        value: d[chart.dataKey],
-      })),
-    };
-  }
-
-  // Scatter / bubble: pass through filtered rows
-  if (chart.type === 'scatter' || chart.type === 'bubble') {
+  // Scatter: pass through filtered rows
+  if (chart.type === 'scatter') {
     return { ...chart, data: filteredRows.slice(0, 200) };
   }
 
-  // Line / area / step: sort by x if it's a date
-  if (chart.type === 'line' || chart.type === 'area' || chart.type === 'step') {
+  // Line / area: pass through filtered rows
+  if (chart.type === 'line' || chart.type === 'area') {
     return { ...chart, data: filteredRows.slice(0, 500) };
   }
 

@@ -140,8 +140,11 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
               style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, color: '#fff', fontSize: 14 }}
             >
               <option value="bar">Bar Chart</option>
+              <option value="stacked-bar">Stacked Bar Chart</option>
               <option value="line">Line Chart</option>
+              <option value="area">Area Chart</option>
               <option value="pie">Pie Chart</option>
+              <option value="donut">Donut Chart</option>
               <option value="scatter">Scatter Chart</option>
               <option value="kpi">KPI Card</option>
               <option value="table">Table</option>

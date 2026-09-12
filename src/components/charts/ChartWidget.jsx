@@ -1,8 +1,6 @@
-import { useState, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter, AreaChart, Area,
-  Treemap, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ComposedChart
 } from 'recharts';
 import { Target, TrendingUp, TrendingDown } from 'lucide-react';
@@ -17,23 +15,12 @@ export default function ChartWidget({ chart, data, title, onRemove, onEdit }) {
     switch(chart.type) {
       case 'kpi': return <KPIWidget chart={chart} />;
       case 'bar': return <BarWidget chart={chart} data={data} />;
-      case 'column': return <BarWidget chart={chart} data={data} />;
       case 'stacked-bar': return <StackedBarWidget chart={chart} data={data} />;
-      case 'histogram': return <HistogramWidget chart={chart} data={data} />;
       case 'line': return <LineWidget chart={chart} data={data} />;
       case 'area': return <AreaWidget chart={chart} data={data} />;
-      case 'step': return <StepWidget chart={chart} data={data} />;
       case 'pie': return <PieWidget chart={chart} data={data} />;
       case 'donut': return <DonutWidget chart={chart} data={data} />;
       case 'scatter': return <ScatterWidget chart={chart} data={data} />;
-      case 'bubble': return <BubbleWidget chart={chart} data={data} />;
-      case 'radar': return <RadarWidget chart={chart} data={data} />;
-      case 'treemap': return <TreemapWidget chart={chart} data={data} />;
-      case 'funnel': return <FunnelWidget chart={chart} data={data} />;
-      case 'sankey': return <SankeyWidget chart={chart} data={data} />;
-      case 'pareto': return <ParetoWidget chart={chart} data={data} />;
-      case 'boxplot': return <BoxPlotWidget chart={chart} data={data} />;
-      case 'heatmap': return <HeatmapWidget chart={chart} data={data} />;
       case 'table': return <TableWidget chart={chart} data={data} />;
       default: return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Unsupported chart type: {chart.type}</div>;
     }
@@ -74,7 +61,7 @@ export default function ChartWidget({ chart, data, title, onRemove, onEdit }) {
   );
 }
 
-// ============== Specific Chart Components ==============
+// ============== Chart Components ==============
 
 function KPIWidget({ chart }) {
   const isPositive = chart.trend !== undefined ? chart.trend >= 0 : true;
@@ -96,14 +83,12 @@ function KPIWidget({ chart }) {
       boxShadow: '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
       backdropFilter: 'blur(10px)'
     }}>
-      {/* Decorative Background */}
       <div style={{
         position: 'absolute', top: -10, right: -10, width: 50, height: 50,
         background: accentColor, borderRadius: '50%', filter: 'blur(25px)', opacity: 0.4,
         animation: 'pulse-glow 5s infinite ease-in-out'
       }} />
 
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, zIndex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
@@ -133,7 +118,6 @@ function KPIWidget({ chart }) {
         </div>
       </div>
       
-      {/* Main Value */}
       <div style={{ zIndex: 1, marginBottom: 10 }}>
         <div style={{ 
           fontSize: 24, fontWeight: 900, 
@@ -144,7 +128,6 @@ function KPIWidget({ chart }) {
         </div>
       </div>
       
-      {/* Stats Footer */}
       <div style={{ 
         display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-start', 
         paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)',
@@ -213,6 +196,29 @@ function BarWidget({ chart, data }) {
   );
 }
 
+function StackedBarWidget({ chart, data }) {
+  if (!chart.data && !data) return null;
+  const chartData = (chart.data || data).slice(0, 500);
+  const yKeys = chart.yKeys || [];
+
+  return (
+    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+        <BarChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" vertical={false} />
+          <XAxis dataKey={chart.xKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+          <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => formatNumber(v, 'K')} />
+          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
+          <Legend />
+          {yKeys.map((key, idx) => (
+            <Bar key={key} dataKey={key} stackId="a" fill={COLORS[idx % COLORS.length]} radius={[6, 6, 0, 0]} animationDuration={800} />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function LineWidget({ chart, data }) {
   if (!chart.data && !data) return null;
   const chartData = (chart.data || data).slice(0, 500);
@@ -226,6 +232,25 @@ function LineWidget({ chart, data }) {
           <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
           <Line type="monotone" dataKey={chart.yKey} stroke="rgba(6,182,212,0.8)" strokeWidth={3} dot={{ r: 4, fill: 'rgba(6,182,212,0.8)', strokeWidth: 2, stroke: 'rgba(6,182,212,0.3)' }} activeDot={{ r: 6, fill: 'rgba(6,182,212,1)' }} animationDuration={800} strokeLinecap="round" />
         </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function AreaWidget({ chart, data }) {
+  if (!chart.data && !data) return null;
+  const chartData = (chart.data || data).slice(0, 500);
+
+  return (
+    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+        <AreaChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" vertical={false} />
+          <XAxis dataKey={chart.xKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+          <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
+          <Area type="monotone" dataKey={chart.yKey} fill="rgba(16,185,129,0.3)" stroke="rgba(16,185,129,0.8)" strokeWidth={2} animationDuration={800} />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
@@ -252,109 +277,6 @@ function PieWidget({ chart, data }) {
           <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
           <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)' }} />
         </PieChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function ScatterWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-        <ScatterChart margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" />
-          <XAxis dataKey={chart.xKey} type="number" name={chart.xKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis dataKey={chart.yKey} type="number" name={chart.yKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <RechartsTooltip 
-            cursor={{ strokeDasharray: '3 3', stroke: 'rgba(99,102,241,0.3)' }} 
-            contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} 
-          />
-          <Scatter name="Data" data={chartData} fill="rgba(244,63,94,0.6)" stroke="rgba(244,63,94,0.3)" isAnimationActive animationDuration={800} />
-        </ScatterChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-// ============== NEW CHART COMPONENTS ==============
-
-function StackedBarWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-  const yKeys = chart.yKeys || [];
-
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-        <BarChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" vertical={false} />
-          <XAxis dataKey={chart.xKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => formatNumber(v, 'K')} />
-          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
-          <Legend />
-          {yKeys.map((key, idx) => (
-            <Bar key={key} dataKey={key} stackId="a" fill={COLORS[idx % COLORS.length]} radius={[6, 6, 0, 0]} animationDuration={800} />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function HistogramWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-        <BarChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" vertical={false} />
-          <XAxis dataKey={chart.xKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
-          <Bar dataKey={chart.yKey} fill="rgba(139,92,246,0.7)" radius={[6, 6, 0, 0]} animationDuration={800} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function AreaWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-        <AreaChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" vertical={false} />
-          <XAxis dataKey={chart.xKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
-          <Area type="monotone" dataKey={chart.yKey} fill="rgba(16,185,129,0.3)" stroke="rgba(16,185,129,0.8)" strokeWidth={2} animationDuration={800} />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function StepWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-        <LineChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" vertical={false} />
-          <XAxis dataKey={chart.xKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
-          <Line type="stepAfter" dataKey={chart.yKey} stroke="rgba(245,158,11,0.8)" strokeWidth={3} dot={{ r: 4, fill: 'rgba(245,158,11,0.8)' }} activeDot={{ r: 6 }} animationDuration={800} />
-        </LineChart>
       </ResponsiveContainer>
     </div>
   );
@@ -388,199 +310,23 @@ function DonutWidget({ chart, data }) {
   );
 }
 
-function BubbleWidget({ chart, data }) {
+function ScatterWidget({ chart, data }) {
   if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 200);
-
+  const chartData = (chart.data || data).slice(0, 500);
   return (
     <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
         <ScatterChart margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" />
-          <XAxis dataKey={chart.xKey} type="number" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis dataKey={chart.yKey} type="number" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <Scatter name="Bubble" data={chartData} fill="rgba(107,114,255,0.6)" shape="circle" 
-            isAnimationActive animationDuration={800}
-            onClick={(e) => console.log(e)}
+          <XAxis dataKey={chart.xKey} type="number" name={chart.xKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+          <YAxis dataKey={chart.yKey} type="number" name={chart.yKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+          <RechartsTooltip 
+            cursor={{ strokeDasharray: '3 3', stroke: 'rgba(99,102,241,0.3)' }} 
+            contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} 
           />
-          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
+          <Scatter name="Data" data={chartData} fill="rgba(244,63,94,0.6)" stroke="rgba(244,63,94,0.3)" isAnimationActive animationDuration={800} />
         </ScatterChart>
       </ResponsiveContainer>
-    </div>
-  );
-}
-
-function RadarWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-  const dataKeys = chart.dataKeys || [];
-
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-        <RadarChart data={chartData}>
-          <PolarGrid stroke="rgba(99,102,241,0.2)" />
-          <PolarAngleAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-          <PolarRadiusAxis stroke="var(--text-muted)" fontSize={11} />
-          {dataKeys.map((key, idx) => (
-            <Radar key={key} name={key} dataKey={key} stroke={COLORS[idx % COLORS.length]} fill={COLORS[idx % COLORS.length]} fillOpacity={0.4} animationDuration={800} />
-          ))}
-          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
-          <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)' }} />
-        </RadarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function TreemapWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-        <Treemap data={chartData} dataKey={chart.dataKey} stroke="#fff" fill="rgba(99,102,241,0.5)" animationDuration={800}>
-          {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
-        </Treemap>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function FunnelWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 20, gap: 8 }}>
-        {chartData.map((entry, index) => (
-          <div 
-            key={index} 
-            style={{ 
-              width: `${((chartData.length - index) / chartData.length * 100)}%`,
-              padding: '12px 16px',
-              background: COLORS[index % COLORS.length],
-              borderRadius: 6,
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: 13,
-              textAlign: 'center',
-              transition: 'all 0.3s',
-              cursor: 'pointer',
-              opacity: 0.85,
-              marginX: 'auto'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.02)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; }}
-          >
-            {entry.name}: {entry[chart.dataKey]}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SankeyWidget({ chart, data }) {
-  if (!chart.data || !chart.data.nodes || !chart.data.links) return null;
-  
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Sankey Flow Diagram</div>
-        <div style={{ fontSize: 12 }}>
-          Nodes: {chart.data.nodes?.length || 0} | Links: {chart.data.links?.length || 0}
-        </div>
-        <svg style={{ width: '100%', height: 200, marginTop: 12 }} viewBox="0 0 300 200">
-          <g stroke="rgba(99,102,241,0.3)" strokeWidth="1">
-            {chart.data.links?.map((link, i) => (
-              <line key={i} x1="20" y1={50 + i * 20} x2="280" y2={50 + i * 20} opacity="0.6" />
-            ))}
-          </g>
-          <text x="10" y="195" fontSize="11" fill="var(--text-muted)">Flow relationships</text>
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-function ParetoWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 500);
-
-  return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" vertical={false} />
-          <XAxis dataKey={Object.keys(chartData[0] || {})[0]} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis yAxisId="left" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis yAxisId="right" orientation="right" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-          <RechartsTooltip contentStyle={{ borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(30,20,46,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} />
-          <Bar dataKey={Object.keys(chartData[0] || {})[1]} yAxisId="left" fill="rgba(99,102,241,0.7)" />
-          <Line yAxisId="right" type="monotone" dataKey="cumulativePercent" stroke="rgba(245,158,11,0.8)" strokeWidth={2} dot={{ r: 3 }} />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function BoxPlotWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const boxData = (chart.data || []);
-
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
-        {boxData.map((box, i) => (
-          <div key={i} style={{ marginBottom: 16, padding: 12, background: 'rgba(99,102,241,0.1)', borderRadius: 6 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>{box.name}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
-              <div>Min: {formatNumber(box.min)}</div>
-              <div>Q1: {formatNumber(box.q1)}</div>
-              <div>Median: {formatNumber(box.median)}</div>
-              <div>Q3: {formatNumber(box.q3)}</div>
-              <div colSpan={2}>Max: {formatNumber(box.max)}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function HeatmapWidget({ chart, data }) {
-  if (!chart.data && !data) return null;
-  const chartData = (chart.data || data).slice(0, 100);
-
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ display: 'grid', gap: 8, width: '100%' }}>
-        {chartData.map((row, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontSize: 11, minWidth: 80, fontWeight: 500, color: 'var(--text-secondary)' }}>{row[chart.xKey]}</div>
-            <div style={{
-              flex: 1,
-              height: 24,
-              background: `rgba(99,102,241,${(row.intensity || 50) / 100})`,
-              borderRadius: 4,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 11,
-              fontWeight: 600,
-              color: (row.intensity || 50) > 50 ? '#fff' : 'var(--text-primary)'
-            }}>
-              {formatNumber(row.value)}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -618,7 +364,6 @@ function TableWidget({ chart, data }) {
               style={{ 
                 borderBottom: '1px solid rgba(99,102,241,0.08)',
                 transition: 'background-color 0.15s',
-                '&:hover': { background: 'rgba(99,102,241,0.05)' }
               }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(99,102,241,0.05)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
