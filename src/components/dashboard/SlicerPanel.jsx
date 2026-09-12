@@ -1,15 +1,11 @@
-import { useMemo } from 'react';
-import { Filter, Calendar, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Filter, Calendar, X, ChevronDown } from 'lucide-react';
 import { getUniqueValues, getDateRange } from '../../utils/chartDataProcessor';
 
 export default function SlicerPanel({ dataset, filters, setFilters, timeline, setTimeline, onReset }) {
   const schema = dataset?.schema || [];
   const rows = dataset?.data || [];
 
-  const categoryCols = useMemo(
-    () => schema.filter((c) => c.type === 'category' || c.type === 'text'),
-    [schema]
-  );
   const dateCols = useMemo(() => schema.filter((c) => c.type === 'date'), [schema]);
 
   const defaultDateRange = useMemo(
@@ -17,14 +13,18 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
     [rows, dateCols]
   );
 
-  const categoryColsWithValues = useMemo(
-    () =>
-      categoryCols.slice(0, 6).map((col) => ({
+  // Only pick category columns with a small number of unique values (≤ 12),
+  // and limit to 3 slicers max — like a real dashboard.
+  const slicerCols = useMemo(() => {
+    const categoryCols = schema.filter((c) => c.type === 'category' || c.type === 'text');
+    return categoryCols
+      .map((col) => ({
         ...col,
-        _values: getUniqueValues(rows, col.key, 20),
-      })),
-    [categoryCols, rows]
-  );
+        _values: getUniqueValues(rows, col.key, 12),
+      }))
+      .filter((col) => col._values && col._values.length >= 2 && col._values.length <= 12)
+      .slice(0, 3);
+  }, [schema, rows]);
 
   const toggleFilter = (col, value) => {
     const current = filters[col] || [];
@@ -47,231 +47,233 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
   return (
     <div
       style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flexWrap: 'wrap',
         background: 'var(--bg-elevated)',
         border: '1px solid var(--border-subtle)',
         borderRadius: 'var(--radius-lg)',
-        padding: '20px 24px',
-        marginBottom: 24,
+        padding: '10px 16px',
+        marginBottom: 20,
         backdropFilter: 'blur(12px)',
       }}
     >
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Filter size={16} color="var(--accent-primary)" />
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Filters & Timeline
-          </span>
-          {activeCount > 0 && (
-            <span
-              className="badge badge-primary"
-              style={{ marginLeft: 4 }}
-            >
-              {activeCount} active
-            </span>
-          )}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <Filter size={14} color="var(--accent-primary)" />
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+          Filters
+        </span>
         {activeCount > 0 && (
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={onReset}
-            style={{ fontSize: 12, gap: 4 }}
-          >
-            <X size={12} /> Clear all
-          </button>
+          <span className="badge badge-primary" style={{ marginLeft: 2, fontSize: 10 }}>
+            {activeCount}
+          </span>
         )}
       </div>
 
-      {/* Timeline */}
+      {/* Divider */}
+      <div style={{ width: 1, height: 24, background: 'var(--border-subtle)', flexShrink: 0 }} />
+
+      {/* Timeline (compact) */}
       {dateCols.length > 0 && defaultDateRange && (
-        <div style={{ marginBottom: 20 }}>
-          <div
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <Calendar size={13} color="var(--text-muted)" />
+          <input
+            type="date"
+            value={timeline?.start || defaultDateRange.start}
+            onChange={(e) =>
+              setTimeline({
+                column: dateCols[0].key,
+                start: e.target.value,
+                end: timeline?.end || defaultDateRange.end,
+              })
+            }
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              marginBottom: 10,
+              padding: '5px 8px',
+              background: 'var(--bg-base)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 6,
+              color: 'var(--text-primary)',
               fontSize: 12,
-              fontWeight: 600,
-              color: 'var(--text-secondary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.4px',
+              colorScheme: 'dark',
+              width: 130,
             }}
-          >
-            <Calendar size={13} /> Timeline ({dateCols[0].key})
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <input
-              type="date"
-              value={timeline?.start || defaultDateRange.start}
-              onChange={(e) =>
-                setTimeline({
-                  column: dateCols[0].key,
-                  start: e.target.value,
-                  end: timeline?.end || defaultDateRange.end,
-                })
-              }
-              style={{
-                padding: '8px 12px',
-                background: 'var(--bg-base)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 8,
-                color: 'var(--text-primary)',
-                fontSize: 13,
-                colorScheme: 'dark',
-              }}
-            />
-            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>to</span>
-            <input
-              type="date"
-              value={timeline?.end || defaultDateRange.end}
-              onChange={(e) =>
-                setTimeline({
-                  column: dateCols[0].key,
-                  start: timeline?.start || defaultDateRange.start,
-                  end: e.target.value,
-                })
-              }
-              style={{
-                padding: '8px 12px',
-                background: 'var(--bg-base)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 8,
-                color: 'var(--text-primary)',
-                fontSize: 13,
-                colorScheme: 'dark',
-              }}
-            />
-            {timeline && (timeline.start !== defaultDateRange.start || timeline.end !== defaultDateRange.end) && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => setTimeline(null)}
-                style={{ fontSize: 11, gap: 4, padding: '4px 8px' }}
-              >
-                <X size={11} /> Reset
-              </button>
-            )}
-          </div>
+          />
+          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>→</span>
+          <input
+            type="date"
+            value={timeline?.end || defaultDateRange.end}
+            onChange={(e) =>
+              setTimeline({
+                column: dateCols[0].key,
+                start: timeline?.start || defaultDateRange.start,
+                end: e.target.value,
+              })
+            }
+            style={{
+              padding: '5px 8px',
+              background: 'var(--bg-base)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 6,
+              color: 'var(--text-primary)',
+              fontSize: 12,
+              colorScheme: 'dark',
+              width: 130,
+            }}
+          />
+          {timeline && (timeline.start !== defaultDateRange.start || timeline.end !== defaultDateRange.end) && (
+            <button
+              onClick={() => setTimeline(null)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
       )}
 
-      {/* Category Slicers */}
-      {categoryCols.length > 0 && (
-        <div
+      {/* Slicer Dropdowns */}
+      {slicerCols.map((col) => (
+        <SlicerDropdown
+          key={col.key}
+          column={col.key}
+          values={col._values || []}
+          selected={filters[col.key] || []}
+          onToggle={(v) => toggleFilter(col.key, v)}
+          onClear={() => clearFilter(col.key)}
+        />
+      ))}
+
+      {/* Clear All */}
+      {activeCount > 0 && (
+        <button
+          onClick={onReset}
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            gap: 12,
+            background: 'none',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 6,
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            fontSize: 11,
+            fontWeight: 600,
+            padding: '5px 10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            flexShrink: 0,
           }}
         >
-          {categoryColsWithValues.map((col) => {
-            const selected = filters[col.key] || [];
-            if (col._values && col._values.length === 0) return null;
-
-            return (
-              <SlicerDropdown
-                key={col.key}
-                column={col.key}
-                values={col._values || []}
-                selected={selected}
-                onToggle={(v) => toggleFilter(col.key, v)}
-                onClear={() => clearFilter(col.key)}
-              />
-            );
-          })}
-        </div>
+          <X size={11} /> Clear All
+        </button>
       )}
     </div>
   );
 }
 
 function SlicerDropdown({ column, values, selected, onToggle, onClear }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <div
-      style={{
-        background: 'var(--bg-base)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 10,
-        padding: '10px 12px',
-      }}
-    >
-      <div
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(!open)}
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 8,
+          gap: 6,
+          padding: '5px 10px',
+          background: selected.length > 0 ? 'rgba(99,102,241,0.12)' : 'var(--bg-base)',
+          border: selected.length > 0 ? '1px solid rgba(99,102,241,0.3)' : '1px solid var(--border-default)',
+          borderRadius: 6,
+          color: 'var(--text-primary)',
+          fontSize: 12,
+          cursor: 'pointer',
+          fontWeight: 500,
+          transition: 'all 0.15s',
+          whiteSpace: 'nowrap',
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
-          {column}
-        </span>
+        <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{column}</span>
         {selected.length > 0 && (
-          <button
-            onClick={onClear}
+          <span className="badge badge-primary" style={{ fontSize: 9, padding: '1px 5px' }}>
+            {selected.length}
+          </span>
+        )}
+        <ChevronDown size={12} color="var(--text-muted)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+
+      {open && (
+        <>
+          {/* Click-away overlay */}
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+          />
+          <div
             style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--accent-primary)',
-              cursor: 'pointer',
-              fontSize: 10,
-              fontWeight: 600,
+              position: 'absolute',
+              top: 'calc(100% + 4px)',
+              left: 0,
+              minWidth: 180,
+              maxHeight: 240,
+              overflowY: 'auto',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 8,
+              padding: '8px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+              zIndex: 1000,
             }}
           >
-            Clear
-          </button>
-        )}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 140, overflowY: 'auto' }}>
-        {values.map((v) => {
-          const isSelected = selected.includes(v);
-          return (
-            <label
-              key={v}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 6px',
-                borderRadius: 5,
-                cursor: 'pointer',
-                fontSize: 12,
-                color: 'var(--text-primary)',
-                background: isSelected ? 'rgba(99,102,241,0.12)' : 'transparent',
-                transition: 'background 0.15s',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={() => onToggle(v)}
-                style={{
-                  width: 14,
-                  height: 14,
-                  cursor: 'pointer',
-                  accentColor: 'var(--accent-primary)',
-                }}
-              />
-              <span
-                style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {v}
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--border-subtle)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                {column}
               </span>
-            </label>
-          );
-        })}
-      </div>
+              {selected.length > 0 && (
+                <button
+                  onClick={onClear}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {/* Options */}
+            {values.map((v) => {
+              const isSelected = selected.includes(v);
+              return (
+                <label
+                  key={v}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 6px',
+                    borderRadius: 5,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    color: 'var(--text-primary)',
+                    background: isSelected ? 'rgba(99,102,241,0.12)' : 'transparent',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => onToggle(v)}
+                    style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+                  />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {v}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
