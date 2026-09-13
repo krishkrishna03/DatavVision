@@ -110,7 +110,7 @@ export default function DashboardEditor() {
   const handleExport = async () => {
     const el = document.getElementById('dashboard-export-area');
     if (!el) return;
-    const canvas = await html2canvas(el, { backgroundColor: '#0a0d14' });
+    const canvas = await html2canvas(el, { backgroundColor: '#f5f6f8' });
     const link = document.createElement('a');
     link.download = `DataVision_${dashboard?.title || 'Export'}.png`;
     link.href = canvas.toDataURL();
@@ -210,18 +210,18 @@ export default function DashboardEditor() {
       {!fullscreen && (
         <div style={{ 
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-          marginBottom: 28, padding: '20px 36px', borderRadius: 'var(--radius-lg)',
-          background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', backdropFilter: 'blur(12px)'
+          marginBottom: 20, padding: '16px 24px', borderRadius: 8,
+          background: '#ffffff', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
         }}>
           <div style={{ flex: 1 }}>
             <input 
               value={dashboard.title} 
               onChange={(e) => updateDashboard(dashboard.id, { title: e.target.value })}
-              style={{ fontSize: 26, fontWeight: 800, background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', maxWidth: 500, letterSpacing: '-0.6px' }}
+              style={{ fontSize: 22, fontWeight: 700, background: 'transparent', border: 'none', color: '#1f2937', outline: 'none', width: '100%', maxWidth: 500, letterSpacing: '-0.4px' }}
               placeholder="Dashboard Title"
             />
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{dataset?.name}</span> • Showing {showingCount.toLocaleString()} of {filteredCount.toLocaleString()} rows • {dataset?.schema?.length || 0} columns
+            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+              <span style={{ color: '#6366f1', fontWeight: 600 }}>{dataset?.name}</span> • Showing {showingCount.toLocaleString()} of {filteredCount.toLocaleString()} rows • {dataset?.schema?.length || 0} columns
             </div>
           </div>
           
@@ -300,9 +300,9 @@ export default function DashboardEditor() {
       {/* Dashboard Surface */}
       <div id="dashboard-export-area" style={{ 
         flex: 1, 
-        padding: fullscreen ? '80px 40px 40px 40px' : '24px 40px', 
-        background: 'var(--bg-base)', 
-        borderRadius: fullscreen ? 0 : 'var(--radius-xl)',
+        padding: fullscreen ? '80px 40px 40px 40px' : '20px 24px', 
+        background: '#f5f6f8', 
+        borderRadius: fullscreen ? 0 : 8,
         height: fullscreen ? '100vh' : 'auto',
         overflow: fullscreen ? 'auto' : 'visible',
         width: '100%',
@@ -311,10 +311,10 @@ export default function DashboardEditor() {
         {/* KPI Section */}
         {displayCharts.filter(c => c.type === 'kpi').length > 0 && (
           <div style={{ marginBottom: 36 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.3px', marginBottom: 16 }}>Key Metrics</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', letterSpacing: '-0.2px', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Key Metrics</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
               {displayCharts.filter(c => c.type === 'kpi').map((chart) => (
-                <div key={chart.id} style={{ borderRadius: 12, overflow: 'hidden', height: 140 }}>
+                <div key={chart.id} style={{ borderRadius: 8, overflow: 'hidden', height: 120 }}>
                   <ChartWidget
                     chart={chart}
                     data={filteredData}
@@ -330,13 +330,13 @@ export default function DashboardEditor() {
         {/* Charts Section */}
         {displayCharts.filter(c => c.type !== 'kpi' && c.type !== 'table').length > 0 && (
           <div style={{ marginBottom: 36 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.3px', marginBottom: 16 }}>Analysis & Insights</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Analysis & Insights</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 12 }}>
               {displayCharts.filter(c => c.type !== 'kpi' && c.type !== 'table').map((chart) => (
                 <div key={chart.id} style={{ 
-                  borderRadius: 12, 
+                  borderRadius: 8, 
                   overflow: 'hidden', 
-                  height: 320
+                  height: 300
                 }}>
                   <ChartWidget
                     chart={chart}
@@ -353,7 +353,7 @@ export default function DashboardEditor() {
         {/* Data Table Section */}
         {displayCharts.find(c => c.type === 'table') && (
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.3px', marginBottom: 16 }}>Data Preview</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Data Preview</div>
             <DashboardGrid 
               charts={displayCharts.filter(c => c.type === 'table')} 
               layout={dashboard.layout.filter(l => dashboard.charts.find(c => c.id === l.i && c.type === 'table'))} 

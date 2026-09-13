@@ -51,20 +51,20 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
         alignItems: 'center',
         gap: 12,
         flexWrap: 'wrap',
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-lg)',
+        background: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderRadius: 8,
         padding: '10px 16px',
-        marginBottom: 20,
-        backdropFilter: 'blur(12px)',
+        marginBottom: 16,
         position: 'relative',
         zIndex: 1000,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <Filter size={14} color="var(--accent-primary)" />
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+        <Filter size={14} color="#6366f1" />
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
           Filters
         </span>
         {activeCount > 0 && (
@@ -75,12 +75,12 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
       </div>
 
       {/* Divider */}
-      <div style={{ width: 1, height: 24, background: 'var(--border-subtle)', flexShrink: 0 }} />
+      <div style={{ width: 1, height: 24, background: '#e5e7eb', flexShrink: 0 }} />
 
       {/* Timeline (compact) */}
       {dateCols.length > 0 && defaultDateRange && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <Calendar size={13} color="var(--text-muted)" />
+          <Calendar size={13} color="#9ca3af" />
           <input
             type="date"
             value={timeline?.start || defaultDateRange.start}
@@ -93,16 +93,16 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
             }
             style={{
               padding: '5px 8px',
-              background: 'var(--bg-base)',
-              border: '1px solid var(--border-default)',
+              background: '#f9fafb',
+              border: '1px solid #e5e7eb',
               borderRadius: 6,
-              color: 'var(--text-primary)',
+              color: '#1f2937',
               fontSize: 12,
-              colorScheme: 'dark',
+              colorScheme: 'light',
               width: 130,
             }}
           />
-          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>→</span>
+          <span style={{ color: '#9ca3af', fontSize: 11 }}>→</span>
           <input
             type="date"
             value={timeline?.end || defaultDateRange.end}
@@ -115,19 +115,19 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
             }
             style={{
               padding: '5px 8px',
-              background: 'var(--bg-base)',
-              border: '1px solid var(--border-default)',
+              background: '#f9fafb',
+              border: '1px solid #e5e7eb',
               borderRadius: 6,
-              color: 'var(--text-primary)',
+              color: '#1f2937',
               fontSize: 12,
-              colorScheme: 'dark',
+              colorScheme: 'light',
               width: 130,
             }}
           />
           {timeline && (timeline.start !== defaultDateRange.start || timeline.end !== defaultDateRange.end) && (
             <button
               onClick={() => setTimeline(null)}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
+              style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 2 }}
             >
               <X size={12} />
             </button>
@@ -153,9 +153,9 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
           onClick={onReset}
           style={{
             background: 'none',
-            border: '1px solid var(--border-subtle)',
+            border: '1px solid #e5e7eb',
             borderRadius: 6,
-            color: 'var(--text-muted)',
+            color: '#6b7280',
             cursor: 'pointer',
             fontSize: 11,
             fontWeight: 600,
@@ -185,10 +185,10 @@ function SlicerDropdown({ column, values, selected, onToggle, onClear }) {
           alignItems: 'center',
           gap: 6,
           padding: '5px 10px',
-          background: selected.length > 0 ? 'rgba(99,102,241,0.12)' : 'var(--bg-base)',
-          border: selected.length > 0 ? '1px solid rgba(99,102,241,0.3)' : '1px solid var(--border-default)',
+          background: selected.length > 0 ? 'rgba(99,102,241,0.08)' : '#f9fafb',
+          border: selected.length > 0 ? '1px solid rgba(99,102,241,0.3)' : '1px solid #e5e7eb',
           borderRadius: 6,
-          color: 'var(--text-primary)',
+          color: '#1f2937',
           fontSize: 12,
           cursor: 'pointer',
           fontWeight: 500,
@@ -196,13 +196,13 @@ function SlicerDropdown({ column, values, selected, onToggle, onClear }) {
           whiteSpace: 'nowrap',
         }}
       >
-        <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{column}</span>
+        <span style={{ color: '#6b7280', fontWeight: 600 }}>{column}</span>
         {selected.length > 0 && (
           <span className="badge badge-primary" style={{ fontSize: 9, padding: '1px 5px' }}>
             {selected.length}
           </span>
         )}
-        <ChevronDown size={12} color="var(--text-muted)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+        <ChevronDown size={12} color="#9ca3af" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
       </button>
 
       {open && (
@@ -220,23 +220,23 @@ function SlicerDropdown({ column, values, selected, onToggle, onClear }) {
               minWidth: 180,
               maxHeight: 240,
               overflowY: 'auto',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)',
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
               borderRadius: 8,
               padding: '8px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
               zIndex: 10001,
             }}
           >
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--border-subtle)' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid #f3f4f6' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                 {column}
               </span>
               {selected.length > 0 && (
                 <button
                   onClick={onClear}
-                  style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}
+                  style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}
                 >
                   Clear
                 </button>
@@ -265,7 +265,7 @@ function SlicerDropdown({ column, values, selected, onToggle, onClear }) {
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => onToggle(v)}
-                    style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+                    style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#6366f1' }}
                   />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {v}
