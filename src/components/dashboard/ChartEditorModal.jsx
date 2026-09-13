@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Palette } from 'lucide-react';
 import { aggregateBy } from '../../utils/aiSuggester';
 
@@ -12,6 +12,16 @@ const COLOR_PRESETS = [
   { name: 'Cyan', bg: 'rgba(34,211,238,0.1)', accent: 'rgba(34,211,238,0.8)' },
   { name: 'Teal', bg: 'rgba(20,184,166,0.1)', accent: 'rgba(20,184,166,0.8)' },
 ];
+
+const inputStyle = {
+  width: '100%', padding: '8px 10px', background: 'var(--bg-base)',
+  border: '1px solid var(--border-default)', borderRadius: 6,
+  color: 'var(--text-primary)', fontSize: 13, outline: 'none',
+};
+
+const labelStyle = {
+  display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: 'var(--text-secondary)',
+};
 
 export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSave }) {
   const [formData, setFormData] = useState({
@@ -95,43 +105,34 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
 
   return (
     <>
-      {/* Click-away overlay */}
       <div onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }} />
 
-      {/* Inline editor panel — floats at top-right of viewport */}
       <div style={{
         position: 'fixed', top: 80, right: 24, width: 380,
         maxHeight: 'calc(100vh - 120px)', overflowY: 'auto',
-        background: '#ffffff', borderRadius: 10,
-        border: '1px solid #e5e7eb',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08)',
-        zIndex: 9999,
-        padding: 20,
+        background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-default)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        zIndex: 9999, padding: 20,
       }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid #f3f4f6' }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1f2937', margin: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--border-subtle)' }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
             Edit {formData.type === 'kpi' ? 'KPI Card' : 'Chart'}
           </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Title */}
           <div>
-            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#374151' }}>Title</label>
-            <input name="title" value={formData.title} onChange={handleChange}
-              style={{ width: '100%', padding: '8px 10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, color: '#1f2937', fontSize: 13, outline: 'none' }}
-              placeholder="Enter chart title" />
+            <label style={labelStyle}>Title</label>
+            <input name="title" value={formData.title} onChange={handleChange} style={inputStyle} placeholder="Enter chart title" />
           </div>
 
-          {/* Chart Type */}
           <div>
-            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#374151' }}>Chart Type</label>
-            <select name="type" value={formData.type} onChange={handleChange}
-              style={{ width: '100%', padding: '8px 10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, color: '#1f2937', fontSize: 13 }}>
+            <label style={labelStyle}>Chart Type</label>
+            <select name="type" value={formData.type} onChange={handleChange} style={inputStyle}>
               <option value="bar">Bar Chart</option>
               <option value="stacked-bar">Stacked Bar Chart</option>
               <option value="line">Line Chart</option>
@@ -144,31 +145,29 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
             </select>
           </div>
 
-          {/* KPI fields */}
           {formData.type === 'kpi' ? (
             <>
               <div>
-                <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#374151' }}>Metric Column</label>
-                <select name="yKey" value={formData.yKey} onChange={handleChange}
-                  style={{ width: '100%', padding: '8px 10px', background: '#f9fafb', border: '1px solid #6366f1', borderRadius: 6, color: '#1f2937', fontSize: 13 }}>
+                <label style={labelStyle}>Metric Column</label>
+                <select name="yKey" value={formData.yKey} onChange={handleChange} style={{ ...inputStyle, borderColor: 'var(--accent-primary)' }}>
                   <option value="">-- Select Column --</option>
                   {dataset?.schema?.filter(c => c.type === 'numeric').map(col => <option key={col.key} value={col.key}>{col.key}</option>)}
                 </select>
               </div>
 
-              <div style={{ padding: '12px', background: '#f9fafb', borderRadius: 8, border: '1px solid #f3f4f6' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>Display Metrics</div>
+              <div style={{ padding: '12px', background: 'var(--bg-elevated)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Display Metrics</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
-                    { key: 'showSum', label: 'Sum', icon: 'Σ' },
-                    { key: 'showAvg', label: 'Average', icon: '∅' },
-                    { key: 'showMax', label: 'Maximum', icon: '↑' },
-                    { key: 'showMin', label: 'Minimum', icon: '↓' },
-                    { key: 'showCount', label: 'Count', icon: '#' },
+                    { key: 'showSum', label: 'Sum' },
+                    { key: 'showAvg', label: 'Average' },
+                    { key: 'showMax', label: 'Maximum' },
+                    { key: 'showMin', label: 'Minimum' },
+                    { key: 'showCount', label: 'Count' },
                   ].map(stat => (
                     <label key={stat.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 8px', background: formData[stat.key] ? 'rgba(99,102,241,0.08)' : 'transparent', borderRadius: 5, transition: 'all 0.15s' }}>
-                      <input type="checkbox" checked={formData[stat.key]} onChange={() => handleToggleStat(stat.key)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#6366f1' }} />
-                      <span style={{ fontSize: 12, color: '#1f2937' }}>{stat.label}</span>
+                      <input type="checkbox" checked={formData[stat.key]} onChange={() => handleToggleStat(stat.key)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent-primary)' }} />
+                      <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{stat.label}</span>
                     </label>
                   ))}
                 </div>
@@ -177,17 +176,15 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
           ) : (
             <>
               <div>
-                <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#374151' }}>X-Axis / Label Column</label>
-                <select name="xKey" value={formData.xKey} onChange={handleChange}
-                  style={{ width: '100%', padding: '8px 10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, color: '#1f2937', fontSize: 13 }}>
+                <label style={labelStyle}>X-Axis / Label Column</label>
+                <select name="xKey" value={formData.xKey} onChange={handleChange} style={inputStyle}>
                   <option value="">-- Select Column --</option>
                   {schemaColumns.map(col => <option key={col} value={col}>{col}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#374151' }}>Y-Axis / Value Column</label>
-                <select name="yKey" value={formData.yKey} onChange={handleChange}
-                  style={{ width: '100%', padding: '8px 10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, color: '#1f2937', fontSize: 13 }}>
+                <label style={labelStyle}>Y-Axis / Value Column</label>
+                <select name="yKey" value={formData.yKey} onChange={handleChange} style={inputStyle}>
                   <option value="">-- Select Column --</option>
                   {schemaColumns.map(col => <option key={col} value={col}>{col}</option>)}
                 </select>
@@ -195,11 +192,10 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
             </>
           )}
 
-          {/* KPI color + format */}
           {formData.type === 'kpi' && (
             <>
               <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 8, fontWeight: 600, color: '#374151' }}>
+                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <Palette size={14} /> Card Color Theme
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
@@ -207,8 +203,8 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
                     <button key={preset.name} onClick={() => handleColorPreset(preset)}
                       style={{
                         padding: '8px 4px', background: preset.bg,
-                        border: formData.bgColor === preset.bg ? '2px solid #6366f1' : '1px solid #e5e7eb',
-                        borderRadius: 6, cursor: 'pointer', fontSize: 10, fontWeight: 600, color: '#374151',
+                        border: formData.bgColor === preset.bg ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                        borderRadius: 6, cursor: 'pointer', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)',
                       }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
                         <div style={{ width: 10, height: 10, borderRadius: 3, background: preset.accent }} />
@@ -219,9 +215,8 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#374151' }}>Number Format</label>
-                <select name="format" value={formData.format} onChange={handleChange}
-                  style={{ width: '100%', padding: '8px 10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, color: '#1f2937', fontSize: 13 }}>
+                <label style={labelStyle}>Number Format</label>
+                <select name="format" value={formData.format} onChange={handleChange} style={inputStyle}>
                   <option value="raw">Raw (1000)</option>
                   <option value="K">Thousands (1K)</option>
                   <option value="M">Millions (1M)</option>
@@ -232,7 +227,9 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
 
           <button onClick={handleSave} style={{
             marginTop: 4, padding: '10px 16px', fontWeight: 600, fontSize: 13,
-            background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer',
+            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+            color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer',
+            boxShadow: '0 4px 15px rgba(99,102,241,0.3)',
           }}>
             Save Changes
           </button>

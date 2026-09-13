@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Search, Plus, Moon, Sparkles } from 'lucide-react';
+import { Search, Plus, Sparkles } from 'lucide-react';
 
 const ROUTE_LABELS = {
-  '/':          { title: 'Welcome back 👋', sub: 'Your AI-powered analytics workspace' },
+  '/':          { title: 'Welcome back', sub: 'Your AI-powered analytics workspace' },
   '/upload':    { title: 'Upload Dataset',   sub: 'Import CSV, Excel or JSON files' },
   '/dashboard': { title: 'Dashboard Editor', sub: 'Drag, edit and customize your charts' },
+  '/dashboards':{ title: 'My Dashboards',     sub: 'Select a dashboard to view or edit' },
   '/templates': { title: 'Template Gallery', sub: 'Browse and reuse dashboard templates' },
   '/datasets':  { title: 'My Datasets',      sub: 'All your uploaded data files' },
 };
@@ -56,16 +57,6 @@ export default function Header() {
       {/* New dashboard */}
       <button className="btn btn-primary btn-sm" onClick={() => navigate('/upload')} style={{ gap: 6 }}>
         <Plus size={14} /> New
-      </button>
-
-      {/* Bell */}
-      <button className="btn-ghost btn btn-icon" style={{ position: 'relative' }}>
-        <Bell size={16} />
-        <span style={{
-          position: 'absolute', top: 6, right: 6,
-          width: 7, height: 7, borderRadius: '50%',
-          background: 'var(--accent-rose)', border: '2px solid var(--bg-base)',
-        }} />
       </button>
     </header>
   );

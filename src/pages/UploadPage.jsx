@@ -28,13 +28,7 @@ export default function UploadPage() {
       for (const f of acceptedFiles) {
         try {
           const parsed = await parseFile(f);
-          // Remove large circular data before storing to prevent stack overflow
-          const preview = {
-            ...parsed,
-            data: parsed.data.slice(0, 50), // Keep only first 50 rows
-            preview: parsed.data.slice(0, 50),
-          };
-          newPreviews.push(preview);
+          newPreviews.push(parsed);
         } catch (err) {
           setError(`Failed to parse ${f.name}: ${err.message}`);
         }
@@ -361,39 +355,6 @@ function StatCard({ icon, label, value, color, bgColor, isNumeric = true }) {
         <div style={{ width: 40, height: 40, borderRadius: 10, background: color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>
           {icon}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Helper component for schema groups
-function SchemaTypeGroup({ title, columns, color, bgColor }) {
-  return (
-    <div style={{ padding: '20px 24px', background: bgColor, borderRadius: 'var(--radius-md)', border: `1px solid ${color}33` }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {columns.slice(0, 6).map(col => (
-          <div key={col.key} style={{ 
-            padding: '8px 12px', 
-            background: 'rgba(255,255,255,0.02)', 
-            borderRadius: 6, 
-            border: '1px solid' + color + '22',
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between',
-            fontSize: 13
-          }}>
-            <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{col.key}</span>
-            <span style={{ fontSize: 11, color: color, background: color + '20', padding: '2px 8px', borderRadius: 4 }}>
-              {col.type === 'numeric' ? '🔢' : col.type === 'category' ? '🏷️' : '📅'} {col.type}
-            </span>
-          </div>
-        ))}
-        {columns.length > 6 && (
-          <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>
-            +{columns.length - 6} more column{columns.length - 6 !== 1 ? 's' : ''}
-          </div>
-        )}
       </div>
     </div>
   );

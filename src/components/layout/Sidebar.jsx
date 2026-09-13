@@ -1,12 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Upload, LayoutTemplate, Database, Sparkles, ChevronRight, Pencil, Check, X } from 'lucide-react';
+import { LayoutDashboard, Upload, LayoutTemplate, Database, Sparkles, ChevronRight, Pencil, Check, X, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useDataStore, useDashboardStore } from '../../store/store';
 
 const nav = [
   { to: '/',          label: 'Home',       icon: Sparkles },
   { to: '/upload',    label: 'Upload Data', icon: Upload },
-  { to: '/dashboard', label: 'Dashboard',   icon: LayoutDashboard },
+  { to: '/dashboards', label: 'Dashboards',  icon: LayoutDashboard },
   { to: '/templates', label: 'Templates',   icon: LayoutTemplate },
   { to: '/datasets',  label: 'My Datasets', icon: Database },
 ];
@@ -16,6 +16,7 @@ export default function Sidebar() {
   const dashboards = useDashboardStore(s => s.dashboards);
   const setActiveDashboard = useDashboardStore(s => s.setActiveDashboard);
   const updateDashboard = useDashboardStore(s => s.updateDashboard);
+  const deleteDashboard = useDashboardStore(s => s.deleteDashboard);
   const navigate = useNavigate();
 
   return (
@@ -26,7 +27,6 @@ export default function Sidebar() {
       borderRight: '1px solid var(--border-subtle)',
       display: 'flex', flexDirection: 'column',
       zIndex: 100, padding: '24px 0',
-      transition: 'transform 0.3s ease, opacity 0.3s ease',
       overflow: 'hidden',
     }}>
       {/* Logo */}
@@ -73,7 +73,7 @@ export default function Sidebar() {
       {dashboards.length > 0 && (
         <div style={{ flex: 1, padding: '8px 12px', overflowY: 'auto', minHeight: 0 }}>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', padding: '8px 12px 6px' }}>
-            My Dashboards
+            Recent
           </div>
           {dashboards.map(d => (
             <DashboardListItem
@@ -85,6 +85,11 @@ export default function Sidebar() {
                 navigate('/dashboard');
               }}
               onRename={(title) => updateDashboard(d.id, { title })}
+              onDelete={() => {
+                if (window.confirm(`Delete "${d.title}"? This cannot be undone.`)) {
+                  deleteDashboard(d.id);
+                }
+              }}
             />
           ))}
         </div>
@@ -107,7 +112,7 @@ export default function Sidebar() {
   );
 }
 
-function DashboardListItem({ dashboard, datasetName, onOpen, onRename }) {
+function DashboardListItem({ dashboard, datasetName, onOpen, onRename, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [tempName, setTempName] = useState(dashboard.title);
 
@@ -182,10 +187,22 @@ function DashboardListItem({ dashboard, datasetName, onOpen, onRename }) {
           background: 'none', border: 'none', cursor: 'pointer', padding: 2,
           color: 'var(--text-muted)', opacity: 0.5, display: 'flex', flexShrink: 0,
         }}
-        onMouseEnter={e => { e.target.style.opacity = 1; e.target.style.color = 'var(--accent-primary)'; }}
-        onMouseLeave={e => { e.target.style.opacity = 0.5; e.target.style.color = 'var(--text-muted)'; }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.color = 'var(--accent-primary)'; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = 0.5; e.currentTarget.style.color = 'var(--text-muted)'; }}
       >
         <Pencil size={12} />
+      </button>
+      <button
+        onClick={e => { e.stopPropagation(); onDelete(); }}
+        title="Delete"
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+          color: 'var(--text-muted)', opacity: 0.5, display: 'flex', flexShrink: 0,
+        }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.color = 'var(--accent-rose)'; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = 0.5; e.currentTarget.style.color = 'var(--text-muted)'; }}
+      >
+        <Trash2 size={12} />
       </button>
     </div>
   );
