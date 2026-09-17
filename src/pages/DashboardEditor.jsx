@@ -286,7 +286,7 @@ export default function DashboardEditor() {
         {kpiCharts.length > 0 && (
           <div style={{ marginBottom: 36 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Key Metrics</div>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(kpiCharts.length, 4)}, 1fr)`, gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
               {kpiCharts.map((chart) => (
                 <div key={chart.id} style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', height: 140 }}>
                   <ChartWidget chart={chart} data={filteredData} onRemove={() => handleRemoveChart(chart.id)} onEdit={() => setEditingChartId(chart.id)} />
