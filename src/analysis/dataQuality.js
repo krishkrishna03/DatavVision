@@ -79,9 +79,10 @@ export function analyzeDataQuality(data, columns, profiles) {
     });
   }
 
-  // Detect duplicate rows (using first 8 columns as signature)
+  // Detect duplicate rows (using first 8 columns as signature, limited to 2000 rows for performance)
   const sigCols = columns.slice(0, 8);
-  for (const row of data) {
+  const dupSample = data.slice(0, 2000);
+  for (const row of dupSample) {
     const sig = sigCols.map(c => String(row[c] ?? '')).join('|||');
     rowSignatures.set(sig, (rowSignatures.get(sig) || 0) + 1);
   }

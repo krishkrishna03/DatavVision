@@ -9,7 +9,7 @@ import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
 
 const MAX_PREVIEW_ROWS = 50;
-const MAX_SAMPLE_ROWS = Number.MAX_SAFE_INTEGER;
+const MAX_SAMPLE_ROWS = 5000;
 const CHUNK_SIZE = 50000;
 
 /**

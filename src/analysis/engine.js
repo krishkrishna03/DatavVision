@@ -21,13 +21,24 @@ import { generateRecommendations, generateQuestions } from './recommendationGene
  * @param {Object} options - { sampleSize, datasetName, fileType, fileSize }
  * @returns {Object} AnalysisResult — shared analysis model
  */
+const MAX_ANALYSIS_SAMPLE = 3000;
+
+function takeSample(data) {
+  if (data.length <= MAX_ANALYSIS_SAMPLE) return data;
+  const step = data.length / MAX_ANALYSIS_SAMPLE;
+  const sample = [];
+  for (let i = 0; i < data.length; i += step) {
+    sample.push(data[Math.floor(i)]);
+  }
+  return sample;
+}
+
 export function runAnalysis(data, columns, options = {}) {
   const { datasetName = 'Dataset', fileType = 'csv', fileSize = 0 } = options;
   const totalRows = data.length;
 
-  // Determine sample size for profiling (max 5000 rows for speed)
-  const profileSampleSize = data.length;
-  const profileSample = data;
+  const profileSample = takeSample(data);
+  const profileSampleSize = profileSample.length;
 
   // 1. PROFILE — detect column roles
   const profiles = profileDataset(profileSample, columns, totalRows);
