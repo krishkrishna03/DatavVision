@@ -1,20 +1,17 @@
-// Zustand store for datasets & dashboard state
+/**
+ * Zustand store — stores compact analysis results, not full datasets.
+ * Datasets store only sample (up to 5000 rows) + preview (50 rows) + analysis result.
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set, del } from 'idb-keyval';
 
 const idbStorage = {
-  getItem: async (name) => {
-    const val = await get(name);
-    return val || null;
-  },
-  setItem: async (name, value) => {
-    await set(name, value);
-  },
-  removeItem: async (name) => {
-    await del(name);
-  },
+  getItem: async (name) => { const val = await get(name); return val || null; },
+  setItem: async (name, value) => { await set(name, value); },
+  removeItem: async (name) => { await del(name); },
 };
 
 export const useDataStore = create(persist(
@@ -24,7 +21,7 @@ export const useDataStore = create(persist(
 
     addDataset: (parsed) => {
       const id = parsed.id || uuidv4();
-      const dataset = { ...parsed, id, createdAt: new Date().toISOString() };
+      const dataset = { ...parsed, id, createdAt: parsed.createdAt || new Date().toISOString() };
       set(s => ({ datasets: [...s.datasets, dataset], activeDatasetId: id }));
       return id;
     },
@@ -43,10 +40,7 @@ export const useDataStore = create(persist(
 
     clearAll: () => set({ datasets: [], activeDatasetId: null }),
   }),
-  { 
-    name: 'ai-dashboard-data',
-    storage: createJSONStorage(() => idbStorage)
-  }
+  { name: 'ai-dashboard-data', storage: createJSONStorage(() => idbStorage) }
 ));
 
 export const useDashboardStore = create(persist(
@@ -54,7 +48,7 @@ export const useDashboardStore = create(persist(
     dashboards: [],
     activeDashboardId: null,
 
-    createDashboard: (datasetId, charts, layout, title = 'Untitled Dashboard') => {
+    createDashboard: (datasetId, charts, layout, title = 'Untitled Dashboard', analysisResult = null) => {
       const id = uuidv4();
       const dashboard = {
         id,
@@ -62,10 +56,11 @@ export const useDashboardStore = create(persist(
         title,
         charts,
         layout,
+        analysisResult,
         filters: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        version: 1,
+        version: 2,
       };
       set(s => ({ dashboards: [...s.dashboards, dashboard], activeDashboardId: id }));
       return id;
@@ -113,10 +108,7 @@ export const useDashboardStore = create(persist(
       activeDashboardId: s.activeDashboardId === id ? null : s.activeDashboardId,
     })),
   }),
-  { 
-    name: 'ai-dashboard-boards',
-    storage: createJSONStorage(() => idbStorage)
-  }
+  { name: 'ai-dashboard-boards', storage: createJSONStorage(() => idbStorage) }
 ));
 
 export const useTemplateStore = create(persist(
@@ -147,8 +139,5 @@ export const useTemplateStore = create(persist(
       templates: s.templates.filter(t => t.id !== id),
     })),
   }),
-  { 
-    name: 'ai-dashboard-templates',
-    storage: createJSONStorage(() => idbStorage)
-  }
+  { name: 'ai-dashboard-templates', storage: createJSONStorage(() => idbStorage) }
 ));

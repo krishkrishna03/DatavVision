@@ -5,10 +5,9 @@ import DashboardGrid from '../components/dashboard/DashboardGrid';
 import ChartWidget from '../components/charts/ChartWidget';
 import ChartEditorModal from '../components/dashboard/ChartEditorModal';
 import SlicerPanel from '../components/dashboard/SlicerPanel';
-import { suggestCharts, buildDefaultLayout } from '../utils/aiSuggester';
-import { applyFilters, recomputeAllCharts } from '../utils/chartDataProcessor';
-import { generateAnalysisReport } from '../utils/reportGenerator';
-import { Lightbulb, Download, Save, Sparkles, AlertCircle, Maximize2, Minimize2, FileText } from 'lucide-react';
+import { runAnalysis } from '../analysis/engine';
+import { generateAnalysisReport } from '../report/reportGenerator';
+import { Lightbulb, Download, Save, Sparkles, AlertCircle, Maximize2, Minimize2, FileText, TrendingUp, TrendingDown, AlertTriangle, Info, MapPin, BarChart3 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 export default function DashboardEditor() {
@@ -26,11 +25,13 @@ export default function DashboardEditor() {
   const saveTemplateStore = useTemplateStore(s => s.saveTemplate);
 
   const [loading, setLoading] = useState(isNew);
+  const [loadingStage, setLoadingStage] = useState('Analyzing dataset...');
   const [editingChartId, setEditingChartId] = useState(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [filters, setFilters] = useState({});
   const [timeline, setTimeline] = useState(null);
   const [reportGenerating, setReportGenerating] = useState(false);
+  const [showInsights, setShowInsights] = useState(true);
 
   const dashboard = dashboards.find(d => d.id === activeDashboardId);
   const dataset = datasets.find(d => d.id === (datasetId || (dashboard ? dashboard.datasetId : null)));
@@ -54,30 +55,36 @@ export default function DashboardEditor() {
     };
   }, [fullscreen]);
 
-  // Reset filters when dataset changes
   useEffect(() => {
     setFilters({});
     setTimeline(null);
   }, [dataset?.id]);
 
-  // Auto-generate if new
+  // Auto-generate dashboard using analysis engine
   useEffect(() => {
     let timer;
     const existingForDataset = dashboards.find(d => d.datasetId === datasetId);
-    
+
     if (isNew && dataset && !existingForDataset) {
+      setLoadingStage('Profiling columns and detecting types...');
       timer = setTimeout(() => {
         try {
-          const generated = suggestCharts(dataset.schema, dataset.data);
-          const layout = buildDefaultLayout(generated);
-          const id = createDashboard(dataset.id, generated, layout, `${dataset.name} Overview`);
+          setLoadingStage('Computing statistics and KPIs...');
+          const analysisResult = runAnalysis(dataset.sample, dataset.columns, {
+            datasetName: dataset.name,
+            fileType: dataset.fileType,
+            fileSize: dataset.sizeBytes,
+          });
+          setLoadingStage('Generating charts and insights...');
+          const layout = buildLayout(analysisResult.charts);
+          const id = createDashboard(dataset.id, analysisResult.charts, layout, `${dataset.name} Analysis`, analysisResult);
           setActiveDashboard(id);
         } catch (err) {
-          console.error("Error generating dashboard charts:", err);
+          console.error('Analysis failed:', err);
         } finally {
           setLoading(false);
         }
-      }, 1500);
+      }, 300);
     } else if (existingForDataset) {
       if (existingForDataset.id !== activeDashboardId) {
         setActiveDashboard(existingForDataset.id);
@@ -86,25 +93,34 @@ export default function DashboardEditor() {
     } else {
       setLoading(false);
     }
-    
+
     return () => { if (timer) clearTimeout(timer); };
   }, [isNew, dataset, activeDashboardId, datasetId, createDashboard, setActiveDashboard, dashboards]);
 
-  // Compute filtered data and recomputed charts
-  const { filteredData, displayCharts } = useMemo(() => {
-    if (!dataset?.data) return { filteredData: [], displayCharts: [] };
-    const filtered = applyFilters(dataset.data, filters, timeline);
+  // Compute filtered data from sample
+  const { filteredData, displayCharts, filteredAnalysis } = useMemo(() => {
+    if (!dataset?.sample) return { filteredData: [], displayCharts: [], filteredAnalysis: null };
+
+    const filtered = applyFilters(dataset.sample, filters, timeline);
+
     if (dashboard?.charts) {
-      const recomputed = recomputeAllCharts(dashboard.charts, filtered);
-      return { filteredData: filtered, displayCharts: recomputed };
+      // For filtered data, re-run analysis on filtered subset
+      let analysis = dashboard.analysisResult;
+      if (filters && Object.values(filters).some(v => Array.isArray(v) && v.length > 0) || timeline) {
+        analysis = runAnalysis(filtered, dataset.columns, {
+          datasetName: dataset.name,
+          fileType: dataset.fileType,
+          fileSize: dataset.sizeBytes,
+        });
+        return { filteredData: filtered, displayCharts: analysis.charts, filteredAnalysis: analysis };
+      }
+      return { filteredData: filtered, displayCharts: dashboard.charts, filteredAnalysis: analysis };
     }
-    return { filteredData: filtered, displayCharts: [] };
-  }, [dataset?.data, filters, timeline, dashboard?.charts]);
+    return { filteredData: filtered, displayCharts: [], filteredAnalysis: null };
+  }, [dataset?.sample, filters, timeline, dashboard?.charts, dashboard?.analysisResult]);
 
   const handleLayoutChange = (newLayout) => {
-    if (activeDashboardId) {
-      updateDashboard(activeDashboardId, { layout: newLayout });
-    }
+    if (activeDashboardId) updateDashboard(activeDashboardId, { layout: newLayout });
   };
 
   const handleExport = async () => {
@@ -121,7 +137,8 @@ export default function DashboardEditor() {
     if (!dataset || !dashboard) return;
     setReportGenerating(true);
     try {
-      await generateAnalysisReport(dataset, dashboard.charts, { filters, timeline });
+      const analysis = filteredAnalysis || dashboard.analysisResult;
+      await generateAnalysisReport(dataset, analysis || dashboard.charts, { filters, timeline });
     } catch (err) {
       console.error('Report generation failed:', err);
       alert('Failed to generate report. Please try again.');
@@ -130,17 +147,14 @@ export default function DashboardEditor() {
     }
   };
 
-  const handleResetFilters = () => {
-    setFilters({});
-    setTimeline(null);
-  };
+  const handleResetFilters = () => { setFilters({}); setTimeline(null); };
 
   if (loading) {
     return (
       <div style={{ height: 'calc(100vh - 150px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <Sparkles className="animate-pulse-glow" size={48} color="var(--accent-primary)" style={{ marginBottom: 20 }} />
         <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>AI is generating your dashboard...</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Analyzing patterns, detecting anomalies, and picking the best charts.</p>
+        <p style={{ color: 'var(--text-secondary)' }}>{loadingStage}</p>
       </div>
     );
   }
@@ -149,16 +163,18 @@ export default function DashboardEditor() {
     setLoading(true);
     setTimeout(() => {
       try {
-        const generated = suggestCharts(dataset.schema, dataset.data);
-        const layout = buildDefaultLayout(generated);
-        const id = createDashboard(dataset.id, generated, layout, `${dataset.name} Overview`);
+        const analysisResult = runAnalysis(dataset.sample, dataset.columns, {
+          datasetName: dataset.name, fileType: dataset.fileType, fileSize: dataset.sizeBytes,
+        });
+        const layout = buildLayout(analysisResult.charts);
+        const id = createDashboard(dataset.id, analysisResult.charts, layout, `${dataset.name} Analysis`, analysisResult);
         setActiveDashboard(id);
       } catch (err) {
-        console.error("Error generating dashboard charts:", err);
+        console.error('Analysis failed:', err);
       } finally {
         setLoading(false);
       }
-    }, 500);
+    }, 300);
   };
 
   if (!dashboard) {
@@ -184,12 +200,11 @@ export default function DashboardEditor() {
 
   const handleAddChart = () => {
     const newChartId = crypto.randomUUID();
-    const newChart = { id: newChartId, type: 'bar', title: 'New Chart', xKey: '', yKey: '' };
+    const newChart = { id: newChartId, type: 'bar', title: 'New Chart', xKey: '', yKey: '', data: [] };
     const newLayoutItem = { i: newChartId, x: 0, y: Infinity, w: 6, h: 4, minW: 3, minH: 3 };
-    
     updateDashboard(dashboard.id, {
       charts: [...dashboard.charts, newChart],
-      layout: [...dashboard.layout, newLayoutItem]
+      layout: [...dashboard.layout, newLayoutItem],
     });
     setEditingChartId(newChartId);
   };
@@ -197,182 +212,169 @@ export default function DashboardEditor() {
   const handleRemoveChart = (id) => {
     updateDashboard(dashboard.id, {
       charts: dashboard.charts.filter(c => c.id !== id),
-      layout: dashboard.layout.filter(l => l.i !== id)
+      layout: dashboard.layout.filter(l => l.i !== id),
     });
   };
 
-  const filteredCount = dataset?.data?.length || 0;
+  const analysis = filteredAnalysis || dashboard.analysisResult;
+  const kpiCharts = displayCharts.filter(c => c.type === 'kpi');
+  const regularCharts = displayCharts.filter(c => c.type !== 'kpi' && c.type !== 'table');
+  const tableCharts = displayCharts.filter(c => c.type === 'table');
+  const insights = analysis?.insights || [];
+  const filteredCount = dataset?.rowCount || dataset?.sample?.length || 0;
   const showingCount = filteredData.length;
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: fullscreen ? 0 : 60, height: fullscreen ? '100vh' : 'auto', width: '100%', boxSizing: 'border-box' }}>
-      {/* Editor Toolbar */}
       {!fullscreen && (
-        <div style={{ 
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-          marginBottom: 20, padding: '16px 24px', borderRadius: 'var(--radius-lg)',
-          background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', backdropFilter: 'blur(12px)'
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, padding: '16px 24px', borderRadius: 'var(--radius-lg)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', backdropFilter: 'blur(12px)' }}>
           <div style={{ flex: 1 }}>
-            <input 
-              value={dashboard.title} 
-              onChange={(e) => updateDashboard(dashboard.id, { title: e.target.value })}
-              style={{ fontSize: 22, fontWeight: 700, background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', maxWidth: 500, letterSpacing: '-0.4px' }}
-              placeholder="Dashboard Title"
-            />
+            <input value={dashboard.title} onChange={(e) => updateDashboard(dashboard.id, { title: e.target.value })} style={{ fontSize: 22, fontWeight: 700, background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', maxWidth: 500, letterSpacing: '-0.4px' }} placeholder="Dashboard Title" />
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{dataset?.name}</span> • Showing {showingCount.toLocaleString()} of {filteredCount.toLocaleString()} rows • {dataset?.schema?.length || 0} columns
+              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{dataset?.name}</span> • {filteredCount.toLocaleString()} total rows • Showing {showingCount.toLocaleString()} sample rows • {dataset?.columns?.length || 0} columns
             </div>
           </div>
-          
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" onClick={handleAddChart}>
-              <Lightbulb size={14} /> Add
-            </button>
-            <button className="btn btn-secondary btn-sm" onClick={handleExport}>
-              <Download size={14} /> Export
-            </button>
-            <button 
-              className="btn btn-primary btn-sm" 
-              onClick={handleGenerateReport}
-              disabled={reportGenerating}
-              style={{ opacity: reportGenerating ? 0.6 : 1 }}
-            >
+            <button className="btn btn-secondary btn-sm" onClick={handleAddChart}><Lightbulb size={14} /> Add</button>
+            <button className="btn btn-secondary btn-sm" onClick={handleExport}><Download size={14} /> Export</button>
+            <button className="btn btn-primary btn-sm" onClick={handleGenerateReport} disabled={reportGenerating} style={{ opacity: reportGenerating ? 0.6 : 1 }}>
               {reportGenerating ? <Sparkles size={14} className="animate-spin" /> : <FileText size={14} />}
               {reportGenerating ? ' Generating...' : ' Report'}
             </button>
-            <button 
-              className="btn btn-secondary btn-sm" 
-              onClick={() => {
-                saveTemplateStore(dashboard, { title: dashboard.title });
-                alert('Template saved!');
-              }}
-            >
-              <Save size={14} /> Save
-            </button>
-            <button className="btn btn-secondary btn-sm" onClick={() => setFullscreen(!fullscreen)}>
-              {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            </button>
+            <button className="btn btn-secondary btn-sm" onClick={() => { saveTemplateStore(dashboard, { title: dashboard.title }); alert('Template saved!'); }}><Save size={14} /> Save</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setFullscreen(!fullscreen)}>{fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
           </div>
         </div>
       )}
 
-      {/* Fullscreen Toolbar */}
       {fullscreen && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 60, zIndex: 100,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 20px', background: 'rgba(10,13,20,0.95)', borderBottom: '1px solid var(--border-subtle)',
-          backdropFilter: 'blur(10px)'
-        }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: 'rgba(10,13,20,0.95)', borderBottom: '1px solid var(--border-subtle)', backdropFilter: 'blur(10px)' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{dashboard.title}</h3>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button className="btn btn-secondary btn-sm" onClick={handleExport}>
-              <Download size={14} /> Export
-            </button>
-            <button 
-              className="btn btn-primary btn-sm" 
-              onClick={handleGenerateReport}
-              disabled={reportGenerating}
-            >
-              {reportGenerating ? <Sparkles size={14} className="animate-spin" /> : <FileText size={14} />}
-              {reportGenerating ? ' Generating...' : ' Report'}
-            </button>
-            <button className="btn btn-secondary btn-sm" onClick={() => setFullscreen(false)}>
-              <Minimize2 size={14} /> Exit Fullscreen
-            </button>
+            <button className="btn btn-secondary btn-sm" onClick={handleExport}><Download size={14} /> Export</button>
+            <button className="btn btn-primary btn-sm" onClick={handleGenerateReport} disabled={reportGenerating}>{reportGenerating ? <Sparkles size={14} className="animate-spin" /> : <FileText size={14} />}{reportGenerating ? ' Generating...' : ' Report'}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setFullscreen(false)}><Minimize2 size={14} /> Exit Fullscreen</button>
           </div>
         </div>
       )}
 
-      {/* Slicer Panel & Timeline */}
       {!fullscreen && dataset && (
-        <SlicerPanel
-          dataset={dataset}
-          filters={filters}
-          setFilters={setFilters}
-          timeline={timeline}
-          setTimeline={setTimeline}
-          onReset={handleResetFilters}
-        />
+        <SlicerPanel dataset={dataset} filters={filters} setFilters={setFilters} timeline={timeline} setTimeline={setTimeline} onReset={handleResetFilters} />
       )}
 
-      {/* Dashboard Surface */}
-      <div id="dashboard-export-area" style={{ 
-        flex: 1, 
-        padding: fullscreen ? '80px 40px 40px 40px' : '24px 40px', 
-        background: 'var(--bg-base)', 
-        borderRadius: fullscreen ? 0 : 'var(--radius-xl)',
-        height: fullscreen ? '100vh' : 'auto',
-        overflow: fullscreen ? 'auto' : 'visible',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        {/* KPI Section */}
-        {displayCharts.filter(c => c.type === 'kpi').length > 0 && (
+      <div id="dashboard-export-area" style={{ flex: 1, padding: fullscreen ? '80px 40px 40px 40px' : '24px 40px', background: 'var(--bg-base)', borderRadius: fullscreen ? 0 : 'var(--radius-xl)', height: fullscreen ? '100vh' : 'auto', overflow: fullscreen ? 'auto' : 'visible', width: '100%', boxSizing: 'border-box' }}>
+        {kpiCharts.length > 0 && (
           <div style={{ marginBottom: 36 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Key Metrics</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-              {displayCharts.filter(c => c.type === 'kpi').map((chart) => (
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(kpiCharts.length, 4)}, 1fr)`, gap: 16 }}>
+              {kpiCharts.map((chart) => (
                 <div key={chart.id} style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', height: 140 }}>
-                  <ChartWidget
-                    chart={chart}
-                    data={filteredData}
-                    onRemove={() => handleRemoveChart(chart.id)}
-                    onEdit={() => setEditingChartId(chart.id)}
-                  />
+                  <ChartWidget chart={chart} data={filteredData} onRemove={() => handleRemoveChart(chart.id)} onEdit={() => setEditingChartId(chart.id)} />
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Charts Section */}
-        {displayCharts.filter(c => c.type !== 'kpi' && c.type !== 'table').length > 0 && (
+        {showInsights && insights.length > 0 && (
           <div style={{ marginBottom: 36 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Analysis & Insights</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Key Insights</div>
+              <button className="btn-ghost btn-sm" onClick={() => setShowInsights(false)} style={{ fontSize: 11, color: 'var(--text-muted)' }}>Hide</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 12 }}>
+              {insights.slice(0, 6).map((insight, i) => (
+                <InsightCard key={i} insight={insight} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {regularCharts.length > 0 && (
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Analysis & Visualizations</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
-              {displayCharts.filter(c => c.type !== 'kpi' && c.type !== 'table').map((chart) => (
-                <div key={chart.id} style={{ 
-                  borderRadius: 'var(--radius-lg)', 
-                  overflow: 'hidden', 
-                  height: 320
-                }}>
-                  <ChartWidget
-                    chart={chart}
-                    data={filteredData}
-                    onRemove={() => handleRemoveChart(chart.id)}
-                    onEdit={() => setEditingChartId(chart.id)}
-                  />
+              {regularCharts.map((chart) => (
+                <div key={chart.id} style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', height: 340 }}>
+                  <ChartWidget chart={chart} data={filteredData} onRemove={() => handleRemoveChart(chart.id)} onEdit={() => setEditingChartId(chart.id)} />
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Data Table Section */}
-        {displayCharts.find(c => c.type === 'table') && (
+        {tableCharts.length > 0 && (
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Data Preview</div>
-            <DashboardGrid 
-              charts={displayCharts.filter(c => c.type === 'table')} 
-              layout={dashboard.layout.filter(l => dashboard.charts.find(c => c.id === l.i && c.type === 'table'))} 
-              data={filteredData}
-              onLayoutChange={handleLayoutChange}
-              onRemoveChart={handleRemoveChart}
-              onEditChart={(id) => setEditingChartId(id)}
-            />
+            <DashboardGrid charts={tableCharts} layout={dashboard.layout.filter(l => dashboard.charts.find(c => c.id === l.i && c.type === 'table'))} data={filteredData} onLayoutChange={handleLayoutChange} onRemoveChart={handleRemoveChart} onEditChart={(id) => setEditingChartId(id)} />
           </div>
         )}
       </div>
 
-      <ChartEditorModal 
-        isOpen={!!editingChartId} 
-        onClose={() => setEditingChartId(null)} 
-        chart={dashboard.charts.find(c => c.id === editingChartId)} 
-        dataset={dataset} 
-        onSave={(chartId, updates) => updateChart(dashboard.id, chartId, updates)} 
-      />
+      <ChartEditorModal isOpen={!!editingChartId} onClose={() => setEditingChartId(null)} chart={dashboard.charts.find(c => c.id === editingChartId)} dataset={dataset} onSave={(chartId, updates) => updateChart(dashboard.id, chartId, updates)} />
     </div>
   );
+}
+
+function InsightCard({ insight }) {
+  const iconMap = {
+    'info': <Info size={16} color="var(--accent-primary)" />,
+    'trend-up': <TrendingUp size={16} color="#34d399" />,
+    'trend-down': <TrendingDown size={16} color="#fb7185" />,
+    'outlier': <AlertTriangle size={16} color="#fbbf24" />,
+    'distribution': <BarChart3 size={16} color="var(--accent-cyan)" />,
+    'correlation': <BarChart3 size={16} color="#a78bfa" />,
+    'geographic': <MapPin size={16} color="#f97316" />,
+    'quality': <AlertCircle size={16} color="#fb7185" />,
+    'statistic': <BarChart3 size={16} color="var(--accent-primary)" />,
+  };
+
+  return (
+    <div className="card" style={{ padding: '16px 18px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {iconMap[insight.type] || <Info size={16} color="var(--accent-primary)" />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{insight.title}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{insight.body}</div>
+      </div>
+    </div>
+  );
+}
+
+function buildLayout(charts) {
+  return charts.map((c, i) => ({
+    i: c.id,
+    x: i % 2,
+    y: Math.floor(i / 2),
+    w: 6,
+    h: 4,
+    minW: 3,
+    minH: 3,
+  }));
+}
+
+function applyFilters(rows, filters = {}, timeline = null) {
+  if (!rows || rows.length === 0) return [];
+  let result = rows;
+  if (timeline && timeline.column && timeline.start && timeline.end) {
+    const startMs = new Date(timeline.start).getTime();
+    const endMs = new Date(timeline.end).getTime();
+    result = result.filter((r) => {
+      const v = r[timeline.column];
+      if (v === null || v === undefined || v === '') return false;
+      const t = new Date(v).getTime();
+      return !isNaN(t) && t >= startMs && t <= endMs;
+    });
+  }
+  const activeKeys = Object.keys(filters).filter(k => Array.isArray(filters[k]) && filters[k].length > 0);
+  for (const key of activeKeys) {
+    const selected = new Set(filters[key].map(String));
+    result = result.filter((r) => {
+      const v = r[key];
+      if (v === null || v === undefined || v === '') return false;
+      return selected.has(String(v));
+    });
+  }
+  return result;
 }

@@ -15,7 +15,7 @@ export default function DatasetGallery() {
           <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>My Datasets</h2>
           <p style={{ color: 'var(--text-secondary)' }}>Manage your imported data sources and seamlessly jump back into your dashboards.</p>
         </div>
-        
+
         <button className="btn btn-primary" onClick={() => navigate('/upload')}>
           <Database size={16} /> Import New Dataset
         </button>
@@ -36,6 +36,7 @@ export default function DatasetGallery() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 24 }}>
           {datasets.map(dataset => {
             const hasDashboard = dashboards.some(d => d.datasetId === dataset.id);
+            const cols = dataset.columns || [];
             return (
               <div key={dataset.id} className="card hover-glow" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -50,7 +51,7 @@ export default function DatasetGallery() {
                       </div>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => removeDataset(dataset.id)}
                     style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
                     title="Delete Dataset"
@@ -58,7 +59,7 @@ export default function DatasetGallery() {
                     <Trash2 size={16} />
                   </button>
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: 16, marginBottom: 24, fontSize: 13, color: 'var(--text-secondary)' }}>
                   <div>
                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{dataset.rowCount.toLocaleString()}</span> rows
@@ -69,21 +70,21 @@ export default function DatasetGallery() {
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 24 }}>
-                  {dataset.schema.slice(0, 4).map(col => (
-                    <span key={col.key} style={{ fontSize: 11, padding: '2px 8px', background: 'var(--bg-elevated)', borderRadius: 100, border: '1px solid var(--border-default)' }}>
-                      {col.key}
+                  {cols.slice(0, 4).map(col => (
+                    <span key={col} style={{ fontSize: 11, padding: '2px 8px', background: 'var(--bg-elevated)', borderRadius: 100, border: '1px solid var(--border-default)' }}>
+                      {col}
                     </span>
                   ))}
-                  {dataset.schema.length > 4 && (
-                    <span style={{ fontSize: 11, padding: '2px 8px', color: 'var(--text-muted)' }}>+{dataset.schema.length - 4} more</span>
+                  {cols.length > 4 && (
+                    <span style={{ fontSize: 11, padding: '2px 8px', color: 'var(--text-muted)' }}>+{cols.length - 4} more</span>
                   )}
                 </div>
 
                 <div style={{ marginTop: 'auto' }}>
-                  <button 
-                    className={hasDashboard ? "btn btn-primary" : "btn btn-secondary"} 
+                  <button
+                    className={hasDashboard ? "btn btn-primary" : "btn btn-secondary"}
                     style={{ width: '100%', justifyContent: 'center' }}
-                    onClick={() => navigate(`/dashboard?dataset=${dataset.id}`)}
+                    onClick={() => navigate(`/dashboard?dataset=${dataset.id}${hasDashboard ? '' : '&new=true'}`)}
                   >
                     {hasDashboard ? 'Open Dashboard' : 'Generate Dashboard'} <ArrowRight size={16} />
                   </button>

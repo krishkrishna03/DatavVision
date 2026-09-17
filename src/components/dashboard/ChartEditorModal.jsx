@@ -65,29 +65,33 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
   const handleSave = () => {
     let newData = undefined;
     let extraUpdates = {};
+    const data = dataset?.sample || [];
 
-    if (dataset?.data) {
+    if (data.length > 0) {
       if (formData.type === 'kpi') {
-        const values = dataset.data.map(r => parseFloat(r[formData.yKey])).filter(n => !isNaN(n));
-        const total = values.reduce((a, b) => a + b, 0);
-        const avg = total / values.length || 0;
-        const max = Math.max(...values, 0);
-        const min = Math.min(...values, Infinity);
-        const count = values.length;
-        extraUpdates = {
-          value: total, avg, max, min: min === Infinity ? 0 : min, count,
-          format: formData.format, column: formData.yKey,
-          bgColor: formData.bgColor, accentColor: formData.accentColor,
-          showSum: formData.showSum, showAvg: formData.showAvg,
-          showMax: formData.showMax, showMin: formData.showMin, showCount: formData.showCount,
-        };
+        const values = data.map(r => parseFloat(r[formData.yKey])).filter(n => !isNaN(n));
+        if (values.length > 0) {
+          const total = values.reduce((a, b) => a + b, 0);
+          const avg = total / values.length;
+          const max = values.reduce((m, v) => Math.max(m, v), -Infinity);
+          const min = values.reduce((m, v) => Math.min(m, v), Infinity);
+          extraUpdates = {
+            value: total, avg, max, min: min === Infinity ? 0 : min, count: values.length,
+            format: formData.format, column: formData.yKey,
+            bgColor: formData.bgColor, accentColor: formData.accentColor,
+            showSum: formData.showSum, showAvg: formData.showAvg,
+            showMax: formData.showMax, showMin: formData.showMin, showCount: formData.showCount,
+          };
+        }
       } else if (formData.type === 'scatter' || formData.type === 'line') {
-        newData = dataset.data.slice(0, 200).map(r => ({
+        newData = data.slice(0, 200).map(r => ({
           [formData.xKey]: parseFloat(r[formData.xKey]) || r[formData.xKey],
           [formData.yKey]: parseFloat(r[formData.yKey]) || 0,
         }));
-      } else {
-        newData = aggregateBy(dataset.data, formData.xKey, formData.yKey);
+      } else if (formData.type === 'pie' || formData.type === 'donut') {
+        newData = aggregateBy(data, formData.xKey, formData.yKey).slice(0, 8);
+      } else if (formData.xKey && formData.yKey) {
+        newData = aggregateBy(data, formData.xKey, formData.yKey);
       }
     }
 
@@ -101,7 +105,9 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
     onClose();
   };
 
-  const schemaColumns = dataset?.schema?.map(c => c.key) || [];
+  const columns = dataset?.columns || [];
+  const profiles = dataset?.analysisResult?.columnProfiles || [];
+  const numericColumns = profiles.filter(p => p.role === 'NUMERIC_MEASURE' || p.role === 'CURRENCY' || p.role === 'COUNT' || p.role === 'DURATION' || p.role === 'PERCENTAGE').map(p => p.column);
 
   return (
     <>
@@ -151,7 +157,7 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
                 <label style={labelStyle}>Metric Column</label>
                 <select name="yKey" value={formData.yKey} onChange={handleChange} style={{ ...inputStyle, borderColor: 'var(--accent-primary)' }}>
                   <option value="">-- Select Column --</option>
-                  {dataset?.schema?.filter(c => c.type === 'numeric').map(col => <option key={col.key} value={col.key}>{col.key}</option>)}
+                  {(numericColumns.length > 0 ? numericColumns : columns).map(col => <option key={col} value={col}>{col}</option>)}
                 </select>
               </div>
 
@@ -179,14 +185,14 @@ export default function ChartEditorModal({ isOpen, onClose, chart, dataset, onSa
                 <label style={labelStyle}>X-Axis / Label Column</label>
                 <select name="xKey" value={formData.xKey} onChange={handleChange} style={inputStyle}>
                   <option value="">-- Select Column --</option>
-                  {schemaColumns.map(col => <option key={col} value={col}>{col}</option>)}
+                  {columns.map(col => <option key={col} value={col}>{col}</option>)}
                 </select>
               </div>
               <div>
                 <label style={labelStyle}>Y-Axis / Value Column</label>
                 <select name="yKey" value={formData.yKey} onChange={handleChange} style={inputStyle}>
                   <option value="">-- Select Column --</option>
-                  {schemaColumns.map(col => <option key={col} value={col}>{col}</option>)}
+                  {columns.map(col => <option key={col} value={col}>{col}</option>)}
                 </select>
               </div>
             </>

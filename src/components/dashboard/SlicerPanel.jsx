@@ -3,27 +3,37 @@ import { Filter, Calendar, X, ChevronDown } from 'lucide-react';
 import { getUniqueValues, getDateRange } from '../../utils/chartDataProcessor';
 
 export default function SlicerPanel({ dataset, filters, setFilters, timeline, setTimeline, onReset }) {
-  const schema = dataset?.schema || [];
-  const rows = dataset?.data || [];
+  const columns = dataset?.columns || [];
+  const rows = dataset?.sample || [];
+  const profiles = dataset?.analysisResult?.columnProfiles || [];
 
-  const dateCols = useMemo(() => schema.filter((c) => c.type === 'date'), [schema]);
+  // Use column profiles to find date and categorical columns
+  const dateCols = useMemo(() => {
+    return profiles.filter(p => p.role === 'DATE' || p.role === 'DATETIME').map(p => p.column);
+  }, [profiles]);
+
+  const dateColName = dateCols[0] || null;
 
   const defaultDateRange = useMemo(
-    () => (dateCols.length > 0 ? getDateRange(rows, dateCols[0].key) : null),
-    [rows, dateCols]
+    () => (dateColName ? getDateRange(rows, dateColName) : null),
+    [rows, dateColName]
   );
 
   const slicerCols = useMemo(() => {
-    const categoryCols = schema.filter((c) => c.type === 'category' || c.type === 'text');
-    return categoryCols
-      .map((col) => ({ ...col, _values: getUniqueValues(rows, col.key, 12) }))
-      .filter((col) => col._values && col._values.length >= 2 && col._values.length <= 12)
-      .slice(0, 3);
-  }, [schema, rows]);
+    // Find categorical dimensions with 2-12 unique values
+    const catProfiles = profiles.filter(p =>
+      (p.role === 'CATEGORICAL_DIMENSION' || p.role === 'GEOGRAPHIC' || p.role === 'BOOLEAN') &&
+      p.uniqueCount >= 2 && p.uniqueCount <= 12
+    );
+    return catProfiles
+      .slice(0, 3)
+      .map(p => ({ key: p.column, _values: getUniqueValues(rows, p.column, 12) }))
+      .filter(col => col._values && col._values.length >= 2);
+  }, [profiles, rows]);
 
   const toggleFilter = (col, value) => {
     const current = filters[col] || [];
-    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+    const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
     setFilters({ ...filters, [col]: next });
   };
 
@@ -34,8 +44,10 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
   };
 
   const activeCount =
-    Object.values(filters).filter((v) => Array.isArray(v) && v.length > 0).length +
+    Object.values(filters).filter(v => Array.isArray(v) && v.length > 0).length +
     (timeline && timeline.start && timeline.end ? 1 : 0);
+
+  if (slicerCols.length === 0 && !dateColName) return null;
 
   return (
     <div style={{
@@ -56,15 +68,15 @@ export default function SlicerPanel({ dataset, filters, setFilters, timeline, se
 
       <div style={{ width: 1, height: 24, background: 'var(--border-subtle)', flexShrink: 0 }} />
 
-      {dateCols.length > 0 && defaultDateRange && (
+      {dateColName && defaultDateRange && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <Calendar size={13} color="var(--text-muted)" />
           <input type="date" value={timeline?.start || defaultDateRange.start}
-            onChange={(e) => setTimeline({ column: dateCols[0].key, start: e.target.value, end: timeline?.end || defaultDateRange.end })}
+            onChange={(e) => setTimeline({ column: dateColName, start: e.target.value, end: timeline?.end || defaultDateRange.end })}
             style={{ padding: '5px 8px', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, colorScheme: 'dark', width: 130 }} />
           <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>→</span>
           <input type="date" value={timeline?.end || defaultDateRange.end}
-            onChange={(e) => setTimeline({ column: dateCols[0].key, start: timeline?.start || defaultDateRange.start, end: e.target.value })}
+            onChange={(e) => setTimeline({ column: dateColName, start: timeline?.start || defaultDateRange.start, end: e.target.value })}
             style={{ padding: '5px 8px', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, colorScheme: 'dark', width: 130 }} />
           {timeline && (timeline.start !== defaultDateRange.start || timeline.end !== defaultDateRange.end) && (
             <button onClick={() => setTimeline(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}>
