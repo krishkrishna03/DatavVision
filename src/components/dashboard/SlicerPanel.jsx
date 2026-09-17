@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Filter, Calendar, X, ChevronDown } from 'lucide-react';
+import { ListFilter as Filter, Calendar, X, ChevronDown } from 'lucide-react';
 import { getUniqueValues, getDateRange } from '../../utils/chartDataProcessor';
 
-export default function SlicerPanel({ dataset, filters, setFilters, timeline, setTimeline, onReset }) {
+export default function SlicerPanel({ dataset, analysis, filters, setFilters, timeline, setTimeline, onReset }) {
   const columns = dataset?.columns || [];
   const rows = dataset?.sample || [];
-  const profiles = dataset?.analysisResult?.columnProfiles || [];
+  const profiles = analysis?.columnProfiles || [];
 
   // Use column profiles to find date and categorical columns
   const dateCols = useMemo(() => {

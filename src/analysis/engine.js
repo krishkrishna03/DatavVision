@@ -107,7 +107,7 @@ export function runAnalysis(data, columns, options = {}) {
   const kpis = generateKPIs(classification, profileSample);
 
   // 11. CHARTS
-  const charts = generateCharts(classification, profileSample);
+  const charts = [...kpis, ...generateCharts(classification, profileSample)];
 
   // Build partial result for insight cross-referencing
   const partialResult = {

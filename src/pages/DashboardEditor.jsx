@@ -114,7 +114,11 @@ export default function DashboardEditor() {
         });
         return { filteredData: filtered, displayCharts: analysis.charts, filteredAnalysis: analysis };
       }
-      return { filteredData: filtered, displayCharts: dashboard.charts, filteredAnalysis: analysis };
+      const savedCharts = dashboard.charts || [];
+      const savedKpis = savedCharts.some(chart => chart.type === 'kpi')
+        ? []
+        : (dashboard.analysisResult?.kpis || []);
+      return { filteredData: filtered, displayCharts: [...savedKpis, ...savedCharts], filteredAnalysis: analysis };
     }
     return { filteredData: filtered, displayCharts: [], filteredAnalysis: null };
   }, [dataset?.sample, filters, timeline, dashboard?.charts, dashboard?.analysisResult]);
@@ -259,7 +263,7 @@ export default function DashboardEditor() {
       )}
 
       {!fullscreen && dataset && (
-        <SlicerPanel dataset={dataset} filters={filters} setFilters={setFilters} timeline={timeline} setTimeline={setTimeline} onReset={handleResetFilters} />
+        <SlicerPanel dataset={dataset} analysis={filteredAnalysis || dashboard.analysisResult} filters={filters} setFilters={setFilters} timeline={timeline} setTimeline={setTimeline} onReset={handleResetFilters} />
       )}
 
       <div id="dashboard-export-area" style={{ flex: 1, padding: fullscreen ? '80px 40px 40px 40px' : '24px 40px', background: 'var(--bg-base)', borderRadius: fullscreen ? 0 : 'var(--radius-xl)', height: fullscreen ? '100vh' : 'auto', overflow: fullscreen ? 'auto' : 'visible', width: '100%', boxSizing: 'border-box' }}>
