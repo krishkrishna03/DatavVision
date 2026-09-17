@@ -97,31 +97,47 @@ export default function DashboardEditor() {
     return () => { if (timer) clearTimeout(timer); };
   }, [isNew, dataset, activeDashboardId, datasetId, createDashboard, setActiveDashboard, dashboards]);
 
-  // Compute filtered data from sample
+  const dashboardAnalysis = useMemo(() => {
+    if (!dataset?.sample || !dataset.columns?.length) return null;
+
+    const storedAnalysis = dashboard?.analysisResult;
+    if (storedAnalysis?.columnProfiles?.length && storedAnalysis.kpis?.length) {
+      return storedAnalysis;
+    }
+
+    return runAnalysis(dataset.sample, dataset.columns, {
+      datasetName: dataset.name,
+      fileType: dataset.fileType,
+      fileSize: dataset.sizeBytes,
+    });
+  }, [dataset?.id, dataset?.sample, dataset?.columns, dataset?.name, dataset?.fileType, dataset?.sizeBytes, dashboard?.analysisResult]);
+
+  // Compute filtered data from the current dataset and always keep KPI/filter metadata available.
   const { filteredData, displayCharts, filteredAnalysis } = useMemo(() => {
     if (!dataset?.sample) return { filteredData: [], displayCharts: [], filteredAnalysis: null };
 
     const filtered = applyFilters(dataset.sample, filters, timeline);
+    const hasFilters = Object.values(filters).some(value => Array.isArray(value) && value.length > 0) || Boolean(timeline);
 
     if (dashboard?.charts) {
-      // For filtered data, re-run analysis on filtered subset
-      let analysis = dashboard.analysisResult;
-      if (filters && Object.values(filters).some(v => Array.isArray(v) && v.length > 0) || timeline) {
-        analysis = runAnalysis(filtered, dataset.columns, {
+      if (hasFilters) {
+        const analysis = runAnalysis(filtered, dataset.columns, {
           datasetName: dataset.name,
           fileType: dataset.fileType,
           fileSize: dataset.sizeBytes,
         });
         return { filteredData: filtered, displayCharts: analysis.charts, filteredAnalysis: analysis };
       }
+
       const savedCharts = dashboard.charts || [];
-      const savedKpis = savedCharts.some(chart => chart.type === 'kpi')
-        ? []
-        : (dashboard.analysisResult?.kpis || []);
-      return { filteredData: filtered, displayCharts: [...savedKpis, ...savedCharts], filteredAnalysis: analysis };
+      const savedKpis = savedCharts.filter(chart => chart.type === 'kpi');
+      const kpis = savedKpis.length > 0 ? savedKpis : (dashboardAnalysis?.kpis || []);
+      const regularCharts = savedCharts.filter(chart => chart.type !== 'kpi');
+      return { filteredData: filtered, displayCharts: [...kpis, ...regularCharts], filteredAnalysis: dashboardAnalysis };
     }
-    return { filteredData: filtered, displayCharts: [], filteredAnalysis: null };
-  }, [dataset?.sample, filters, timeline, dashboard?.charts, dashboard?.analysisResult]);
+
+    return { filteredData: filtered, displayCharts: [], filteredAnalysis: dashboardAnalysis };
+  }, [dataset?.sample, dataset?.columns, dataset?.name, dataset?.fileType, dataset?.sizeBytes, filters, timeline, dashboard?.charts, dashboardAnalysis]);
 
   const handleLayoutChange = (newLayout) => {
     if (activeDashboardId) updateDashboard(activeDashboardId, { layout: newLayout });
@@ -263,7 +279,7 @@ export default function DashboardEditor() {
       )}
 
       {!fullscreen && dataset && (
-        <SlicerPanel dataset={dataset} analysis={filteredAnalysis || dashboard.analysisResult} filters={filters} setFilters={setFilters} timeline={timeline} setTimeline={setTimeline} onReset={handleResetFilters} />
+        <SlicerPanel dataset={dataset} analysis={filteredAnalysis || dashboardAnalysis} filters={filters} setFilters={setFilters} timeline={timeline} setTimeline={setTimeline} onReset={handleResetFilters} />
       )}
 
       <div id="dashboard-export-area" style={{ flex: 1, padding: fullscreen ? '80px 40px 40px 40px' : '24px 40px', background: 'var(--bg-base)', borderRadius: fullscreen ? 0 : 'var(--radius-xl)', height: fullscreen ? '100vh' : 'auto', overflow: fullscreen ? 'auto' : 'visible', width: '100%', boxSizing: 'border-box' }}>

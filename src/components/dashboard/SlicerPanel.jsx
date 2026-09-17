@@ -3,7 +3,6 @@ import { ListFilter as Filter, Calendar, X, ChevronDown } from 'lucide-react';
 import { getUniqueValues, getDateRange } from '../../utils/chartDataProcessor';
 
 export default function SlicerPanel({ dataset, analysis, filters, setFilters, timeline, setTimeline, onReset }) {
-  const columns = dataset?.columns || [];
   const rows = dataset?.sample || [];
   const profiles = analysis?.columnProfiles || [];
 
@@ -20,14 +19,15 @@ export default function SlicerPanel({ dataset, analysis, filters, setFilters, ti
   );
 
   const slicerCols = useMemo(() => {
-    // Find categorical dimensions with 2-12 unique values
-    const catProfiles = profiles.filter(p =>
-      (p.role === 'CATEGORICAL_DIMENSION' || p.role === 'GEOGRAPHIC' || p.role === 'BOOLEAN') &&
-      p.uniqueCount >= 2 && p.uniqueCount <= 12
+    const filterableProfiles = profiles.filter(p =>
+      (p.role === 'CATEGORICAL_DIMENSION' || p.role === 'GEOGRAPHIC' || p.role === 'BOOLEAN' ||
+        (p.role === 'TEXT' && p.uniqueCount <= 30)) &&
+      p.uniqueCount >= 2 && p.uniqueCount <= 30
     );
-    return catProfiles
-      .slice(0, 3)
-      .map(p => ({ key: p.column, _values: getUniqueValues(rows, p.column, 12) }))
+
+    return filterableProfiles
+      .slice(0, 4)
+      .map(p => ({ key: p.column, _values: getUniqueValues(rows, p.column, 20) }))
       .filter(col => col._values && col._values.length >= 2);
   }, [profiles, rows]);
 
