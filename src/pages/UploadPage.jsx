@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
-import { UploadCloud, File, AlertCircle, FileSpreadsheet, Loader2, Database, ArrowRight, TrendingUp, BarChart3, Grid3x3, Sparkles, CheckCircle } from 'lucide-react';
+import { CloudUpload as UploadCloud, File, CircleAlert as AlertCircle, FileSpreadsheet, Loader as Loader2, Database, ArrowRight, TrendingUp, ChartBar as BarChart3, Grid3x3, Sparkles, CircleCheck as CheckCircle } from 'lucide-react';
 import { parseFile, mergeDatasets } from '../data/dataParser';
 import { useDataStore } from '../store/store';
 
@@ -153,7 +153,6 @@ export default function UploadPage() {
                       <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 13 }}>{preview.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                         {preview.rowCount.toLocaleString()} rows × {preview.columnCount} columns
-                        {preview.rowCount > 5000 && <span style={{ color: 'var(--accent-cyan)', marginLeft: 8 }}>(sampled {preview.sample.length} for analysis)</span>}
                       </div>
                     </div>
                   </div>
@@ -167,7 +166,7 @@ export default function UploadPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
               <StatCard icon={<BarChart3 size={20} />} label="Total Columns" value={dataAnalysis.totalColumns} color="var(--accent-primary)" bgColor="rgba(99,102,241,0.1)" />
               <StatCard icon={<Database size={20} />} label="Total Rows" value={dataAnalysis.totalRows.toLocaleString()} color="var(--accent-emerald)" bgColor="rgba(16,185,129,0.1)" isNumeric={true} />
-              <StatCard icon={<Grid3x3 size={20} />} label="Sample Size" value={dataAnalysis.sampleRows.toLocaleString()} color="var(--accent-cyan)" bgColor="rgba(6,182,212,0.1)" isNumeric={true} />
+              <StatCard icon={<Grid3x3 size={20} />} label="Rows for Analysis" value={dataAnalysis.sampleRows.toLocaleString()} color="var(--accent-cyan)" bgColor="rgba(6,182,212,0.1)" isNumeric={true} />
               <StatCard icon={<TrendingUp size={20} />} label="File Size" value={`${dataAnalysis.totalSize} MB`} color="var(--accent-amber)" bgColor="rgba(245,158,11,0.1)" />
             </div>
           )}

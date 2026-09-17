@@ -26,8 +26,8 @@ export function runAnalysis(data, columns, options = {}) {
   const totalRows = data.length;
 
   // Determine sample size for profiling (max 5000 rows for speed)
-  const profileSampleSize = Math.min(data.length, 5000);
-  const profileSample = data.slice(0, profileSampleSize);
+  const profileSampleSize = data.length;
+  const profileSample = data;
 
   // 1. PROFILE — detect column roles
   const profiles = profileDataset(profileSample, columns, totalRows);

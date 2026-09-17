@@ -7,7 +7,7 @@ import ChartEditorModal from '../components/dashboard/ChartEditorModal';
 import SlicerPanel from '../components/dashboard/SlicerPanel';
 import { runAnalysis } from '../analysis/engine';
 import { generateAnalysisReport } from '../report/reportGenerator';
-import { Lightbulb, Download, Save, Sparkles, AlertCircle, Maximize2, Minimize2, FileText, TrendingUp, TrendingDown, AlertTriangle, Info, MapPin, BarChart3 } from 'lucide-react';
+import { Lightbulb, Download, Save, Sparkles, CircleAlert as AlertCircle, Maximize2, Minimize2, FileText, TrendingUp, TrendingDown, TriangleAlert as AlertTriangle, Info, MapPin, ChartBar as BarChart3 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 export default function DashboardEditor() {
@@ -231,7 +231,7 @@ export default function DashboardEditor() {
           <div style={{ flex: 1 }}>
             <input value={dashboard.title} onChange={(e) => updateDashboard(dashboard.id, { title: e.target.value })} style={{ fontSize: 22, fontWeight: 700, background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', maxWidth: 500, letterSpacing: '-0.4px' }} placeholder="Dashboard Title" />
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{dataset?.name}</span> • {filteredCount.toLocaleString()} total rows • Showing {showingCount.toLocaleString()} sample rows • {dataset?.columns?.length || 0} columns
+              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{dataset?.name}</span> • {filteredCount.toLocaleString()} total rows • Showing {showingCount.toLocaleString()} rows • {dataset?.columns?.length || 0} columns
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -276,6 +276,19 @@ export default function DashboardEditor() {
           </div>
         )}
 
+        {regularCharts.length > 0 && (
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Analysis & Visualizations</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
+              {regularCharts.map((chart) => (
+                <div key={chart.id} style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', height: 340 }}>
+                  <ChartWidget chart={chart} data={filteredData} onRemove={() => handleRemoveChart(chart.id)} onEdit={() => setEditingChartId(chart.id)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {showInsights && insights.length > 0 && (
           <div style={{ marginBottom: 36 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -285,19 +298,6 @@ export default function DashboardEditor() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 12 }}>
               {insights.slice(0, 6).map((insight, i) => (
                 <InsightCard key={i} insight={insight} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {regularCharts.length > 0 && (
-          <div style={{ marginBottom: 36 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Analysis & Visualizations</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
-              {regularCharts.map((chart) => (
-                <div key={chart.id} style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', height: 340 }}>
-                  <ChartWidget chart={chart} data={filteredData} onRemove={() => handleRemoveChart(chart.id)} onEdit={() => setEditingChartId(chart.id)} />
-                </div>
               ))}
             </div>
           </div>
